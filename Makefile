@@ -11,6 +11,8 @@ DBG_FLAGS =		-g3 \
 
 SRC =	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/cpu.c \
+		$(SRC_DIR)/instructions.c \
+		$(SRC_DIR)/display.c \
 
 OBJ = $(patsubst $(SRC_DIR)/%,$(BUILD_DIR)/%,$(SRC:.c=.o))
 
