@@ -122,7 +122,7 @@ void exec_PHA(t_cpu *cpu, const t_instruct *instr)
 
 void exec_PHP(t_cpu *cpu, const t_instruct *instr)
 {
-	push_stack(cpu, cpu->status);
+	push_stack(cpu, cpu->status | FLAG_E | FLAG_B);
 	cpu->pc += instr->n_bytes;
 }
 
@@ -407,7 +407,6 @@ void exec_INY(t_cpu *cpu, const t_instruct *instr)
 
 void exec_BRK(t_cpu *cpu, const t_instruct *instr)
 {
-	// TODO: Understand BRK lol
 	cpu->pc += 2;
 	push_stack(cpu, cpu->pc_hi);
 	push_stack(cpu, cpu->pc_lo);
@@ -449,88 +448,104 @@ void exec_RTS(t_cpu *cpu, const t_instruct *instr)
 void exec_BCC(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
-	cpu->pc = !(cpu->status & FLAG_C) ? cpu->addrbus : cpu->pc + instr->n_bytes;
+	cpu->addrbus += instr->n_bytes;
+	cpu->pc = !(cpu->status & FLAG_C) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
 }
 
 void exec_BCS(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
-	cpu->pc = (cpu->status & FLAG_C) ? cpu->addrbus : cpu->pc + instr->n_bytes;
+	cpu->addrbus += instr->n_bytes;
+	cpu->pc = (cpu->status & FLAG_C) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
 }
 
 void exec_BEQ(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
-	cpu->pc = (cpu->status & FLAG_Z) ? cpu->addrbus : cpu->pc + instr->n_bytes;
+	cpu->addrbus += instr->n_bytes;
+	cpu->pc = (cpu->status & FLAG_Z) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
 }
 
 void exec_BMI(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
-	cpu->pc = (cpu->status & FLAG_N) ? cpu->addrbus : cpu->pc + instr->n_bytes;
+	cpu->addrbus += instr->n_bytes;
+	cpu->pc = (cpu->status & FLAG_N) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
 }
 
 void exec_BNE(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
-	cpu->pc = !(cpu->status & FLAG_Z) ? cpu->addrbus : cpu->pc + instr->n_bytes;
+	cpu->addrbus += instr->n_bytes;
+	cpu->pc = !(cpu->status & FLAG_Z) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
 }
 
 void exec_BPL(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
-	cpu->pc = !(cpu->status & FLAG_N) ? cpu->addrbus : cpu->pc + instr->n_bytes;
+	cpu->addrbus += instr->n_bytes;
+	cpu->pc = !(cpu->status & FLAG_N) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
 }
 
 void exec_BVC(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
-	cpu->pc = !(cpu->status & FLAG_V) ? cpu->addrbus : cpu->pc + instr->n_bytes;
+	cpu->addrbus += instr->n_bytes;
+	cpu->pc = !(cpu->status & FLAG_V) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
 }
 
 void exec_BVS(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
-	cpu->pc = (cpu->status & FLAG_V) ? cpu->addrbus : cpu->pc + instr->n_bytes;
+	cpu->addrbus += instr->n_bytes;
+	cpu->pc = (cpu->status & FLAG_V) ? cpu->addrbus  : cpu->pc + instr->n_bytes;
 }
 
 void exec_CLC(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status &= ~FLAG_C;
+	cpu->pc += instr->n_bytes;
 }
 
 void exec_CLD(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status &= ~FLAG_D;
+	cpu->pc += instr->n_bytes;
 }
 
 void exec_CLI(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status &= ~FLAG_I;
+	cpu->pc += instr->n_bytes;
 }
 
 void exec_CLV(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status &= ~FLAG_V;
+	cpu->pc += instr->n_bytes;
 }
 
 void exec_SEC(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status |= FLAG_C;
+	cpu->pc += instr->n_bytes;
 }
 
 void exec_SED(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status |= FLAG_D;
+	cpu->pc += instr->n_bytes;
 }
 
 void exec_SEI(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status |= FLAG_I;
+	cpu->pc += instr->n_bytes;
 }
 
 void exec_NOP(t_cpu *cpu, const t_instruct *instr)
 {
+	cpu->pc += instr->n_bytes;
 	return ;
 }
 

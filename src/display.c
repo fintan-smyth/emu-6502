@@ -164,7 +164,7 @@ void	print_instr(uint8_t *mem, uint16_t addr)
 
 	printf("\e[31;1m%s\e[m : ", get_instruct_str(instr->instruction));
 	for (int i = 0; i < instr->n_bytes; i++)
-	  printf("\e[34;1m%X ", mem[addr + i]);
+	  printf("\e[34;1m%02X ", mem[addr + i]);
 	printf("\t\e[32;1m%s\e[m\n",get_addrmode_str(instr->addrmode));
 }
 
