@@ -138,6 +138,6 @@ int	main(void)
 		printf("\n");
 		print_registers(&cpu);
 		getchar();
-		cpu.pc += instr->n_bytes;
+		// cpu.pc += instr->n_bytes;
 	}
 }

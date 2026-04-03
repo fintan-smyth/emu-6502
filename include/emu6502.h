@@ -154,6 +154,9 @@ typedef struct t_cpu
 uint8_t		read_byte(t_cpu *cpu, size_t addr);
 uint16_t	read_word(t_cpu *cpu, size_t addr);
 void		write_byte(t_cpu *cpu, size_t addr, uint8_t value);
+void		push_stack(t_cpu *cpu, uint8_t val);
+uint8_t 	pop_stack(t_cpu *cpu);
+
 void		get_addr(t_cpu *cpu, AddrMode mode);
 uint8_t		get_operand(t_cpu *cpu, AddrMode mode);
 

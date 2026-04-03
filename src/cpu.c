@@ -376,3 +376,15 @@ const t_instruct *get_instruction(uint8_t opcode)
 {
 	return &codes[opcode];
 }
+
+void	push_stack(t_cpu *cpu, uint8_t val)
+{
+	uint16_t addr = 0x100 | cpu->sp--;
+	write_byte(cpu, addr, val);
+}
+
+uint8_t pop_stack(t_cpu *cpu)
+{
+	uint16_t addr = 0x100 | ++cpu->sp;
+	return read_byte(cpu, addr);
+}
