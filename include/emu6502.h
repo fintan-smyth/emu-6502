@@ -137,14 +137,7 @@ typedef struct t_cpu
 	uint8_t 	y;
 	uint8_t 	sp;
 	uint8_t		status;
-	union
-	{
-		uint16_t	pc;
-		struct {
-			uint8_t	pc_hi;
-			uint8_t	pc_lo;
-		};
-	};
+	uint16_t	pc;
 	uint8_t		dbus;
 	uint16_t	addrbus;
 	uint8_t		*memory;

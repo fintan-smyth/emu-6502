@@ -84,9 +84,12 @@ void	run_until_addr(t_cpu *cpu, uint16_t addr)
 {
 	while (cpu->pc != addr)
 	{
+		uint16_t old_pc = cpu->pc;
 		uint8_t opcode = read_byte(cpu, cpu->pc);
 		const t_instruct *instr = get_instruction(opcode);
 		execute_instr(cpu, instr);
+		if (cpu->pc == old_pc)
+			break ;
 	}
 }
 
@@ -112,7 +115,7 @@ int	main(int argc, char **argv)
 
 
 	set_term_settings();
-	// run_until_addr(&cpu, 0x3469);
+	run_until_addr(&cpu, 0x1b6f);
 	while (true)
 	{
 		uint16_t orig_pc = cpu.pc;
@@ -141,6 +144,9 @@ int	main(int argc, char **argv)
 				case ('s'):
 					cpu.sp = read_byte_input("SP = ");
 					break;
+				case ('q'):
+					reset_term_settings();
+					return 0;
 				default:
 					break;
 			}
@@ -156,8 +162,8 @@ int	main(int argc, char **argv)
 		print_registers(&cpu);
 		getchar();
 		// cpu.pc += instr->n_bytes;
-		if (cpu.pc == orig_pc)
-			break;
+		// if (cpu.pc == orig_pc)
+		// 	break;
 	}
 	reset_term_settings();
 	printf("PC: %04X\n", cpu.pc);

@@ -408,10 +408,11 @@ void exec_INY(t_cpu *cpu, const t_instruct *instr)
 void exec_BRK(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->pc += 2;
-	push_stack(cpu, cpu->pc_hi);
-	push_stack(cpu, cpu->pc_lo);
-	push_stack(cpu, cpu->status);
-	cpu->pc = cpu->addrbus;
+	push_stack(cpu, (cpu->pc >> 8) & 0xFF);
+	push_stack(cpu, cpu->pc & 0xFF);
+	push_stack(cpu, cpu->status | FLAG_E | FLAG_B);
+	cpu->status |= FLAG_I;
+	cpu->pc = read_word(cpu, 0xFFFE);
 }
 
 void exec_JMP(t_cpu *cpu, const t_instruct *instr)
@@ -424,24 +425,23 @@ void exec_JSR(t_cpu *cpu, const t_instruct *instr)
 {
 	get_addr(cpu, instr->addrmode);
 
-	cpu->pc += 2;
-	push_stack(cpu, cpu->pc_hi);
-	push_stack(cpu, cpu->pc_lo);
+	cpu->pc += instr->n_bytes - 1;
+	push_stack(cpu, (cpu->pc >> 8) & 0xFF);
+	push_stack(cpu, cpu->pc & 0xFF);
 	cpu->pc = cpu->addrbus;
 }
 
 void exec_RTI(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status = pop_stack(cpu);
-	cpu->pc_lo = pop_stack(cpu);
-	cpu->pc_hi = pop_stack(cpu);
-	cpu->pc++;
+	cpu->pc = pop_stack(cpu);
+	cpu->pc |= (pop_stack(cpu) << 8);
 }
 
 void exec_RTS(t_cpu *cpu, const t_instruct *instr)
 {
-	cpu->pc_lo = pop_stack(cpu);
-	cpu->pc_hi = pop_stack(cpu);
+	cpu->pc = pop_stack(cpu);
+	cpu->pc |= (pop_stack(cpu) << 8);
 	cpu->pc++;
 }
 
