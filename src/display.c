@@ -4,6 +4,74 @@
 #include <stdio.h>
 #include <sys/types.h>
 
+static const int instr_cols[INSTRUCTIONS_MAX] = {
+	[LDA] = COL_RED,
+	[LDX] = COL_RED,
+	[LDY] = COL_RED,
+	[STA] = COL_RED,
+	[STX] = COL_RED,
+	[STY] = COL_RED,
+	[TAX] = COL_CYAN,
+	[TAY] = COL_CYAN,
+	[TSX] = COL_CYAN,
+	[TXA] = COL_CYAN,
+	[TXS] = COL_CYAN,
+	[TYA] = COL_CYAN,
+	[PHA] = COL_MAGENTA,
+	[PHP] = COL_MAGENTA,
+	[PLA] = COL_MAGENTA,
+	[PLP] = COL_MAGENTA,
+	[ASL] = COL_BLUE,
+	[LSR] = COL_BLUE,
+	[ROL] = COL_BLUE,
+	[ROR] = COL_BLUE,
+	[AND] = COL_BLUE,
+	[BIT] = COL_BLUE,
+	[EOR] = COL_BLUE,
+	[ORA] = COL_BLUE,
+	[ADC] = COL_GREEN,
+	[CMP] = COL_GREEN,
+	[CPX] = COL_GREEN,
+	[CPY] = COL_GREEN,
+	[SBC] = COL_GREEN,
+	[DEC] = COL_CYAN,
+	[DEX] = COL_CYAN,
+	[DEY] = COL_CYAN,
+	[INC] = COL_CYAN,
+	[INX] = COL_CYAN,
+	[INY] = COL_CYAN,
+	[BRK] = COL_YELLOW,
+	[JMP] = COL_YELLOW,
+	[JSR] = COL_YELLOW,
+	[RTI] = COL_YELLOW,
+	[RTS] = COL_YELLOW,
+	[BCC] = COL_YELLOW,
+	[BCS] = COL_YELLOW,
+	[BEQ] = COL_YELLOW,
+	[BMI] = COL_YELLOW,
+	[BNE] = COL_YELLOW,
+	[BPL] = COL_YELLOW,
+	[BVC] = COL_YELLOW,
+	[BVS] = COL_YELLOW,
+	[CLC] = COL_WHITE,
+	[CLD] = COL_WHITE,
+	[CLI] = COL_WHITE,
+	[CLV] = COL_WHITE,
+	[SEC] = COL_WHITE,
+	[SED] = COL_WHITE,
+	[SEI] = COL_WHITE,
+	[NOP] = COL_WHITE,
+};
+
+void	colour_instr(uint8_t opcode)
+{
+	const t_instruct *instr = get_instruction(opcode);
+	if (instr->n_bytes == 0)
+		printf("\e[m");
+	else
+		printf("\e[3%d;1m", instr_cols[instr->instruction]);
+}
+
 const char *get_instruct_str(enum instructions instr)
 {
 	switch (instr) {
@@ -162,10 +230,11 @@ void	print_instr(uint8_t *mem, uint16_t addr)
 {
 	const t_instruct *instr = get_instruction(mem[addr]);
 
-	printf("\e[31;1m%s\e[m : ", get_instruct_str(instr->instruction));
+	colour_instr(mem[addr]);
+	printf("%s\e[m : ", get_instruct_str(instr->instruction));
 	for (int i = 0; i < instr->n_bytes; i++)
 	  printf("\e[34;1m%02X ", mem[addr + i]);
-	printf("\t\e[32;1m%s\e[m\n",get_addrmode_str(instr->addrmode));
+	printf("\t\e[32;1m%s\e[m\n", get_addrmode_str(instr->addrmode));
 }
 
 void print_status_register(uint8_t status)
@@ -193,4 +262,48 @@ void print_registers(t_cpu *cpu)
 	print_status_register(cpu->status);
 
 	printf("\n");
+}
+
+void	print_stack(t_cpu *cpu)
+{
+	printf("\e[31;1mSTK\e[m:\e[34;1m");
+	for (uint8_t i = 0xFF; i > cpu->sp; i--)
+		printf(" %02X", read_byte(cpu, 0x100 | i));
+	printf("\e[m\n");
+}
+
+void	print_zeropage(t_cpu *cpu)
+{
+	printf("   \e[34;4;1m 00");
+	for (uint16_t i = 1; i < 0x20; i++)
+	{
+		printf("%s%s", i % 4 == 0 ? " " : "",
+						i % 16 == 0 ? " " : ""
+		);
+		printf(" %02X", i);
+	}
+	printf("\e[m\n\e[34;1m00|");
+	for (uint16_t i = 0;;)
+	{
+		uint8_t op = read_byte(cpu, i++);
+		colour_instr(op);
+		printf(" %02X", op);
+		printf("%s%s", i % 4 == 0 ? " " : "",
+						i % 16 == 0 ? " " : ""
+		);
+		if (i == 0x100)
+			break;
+		if (i % 32 == 0)
+			printf("\n\e[34;1m%02X|", i);
+	}
+	printf("\e[m\n");
+}
+
+void print_debug_view(t_cpu *cpu, uint16_t pc)
+{
+	print_instr(cpu->memory, pc);
+	printf("\n");
+	print_registers(cpu);
+	print_stack(cpu);
+	print_zeropage(cpu);
 }

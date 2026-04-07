@@ -56,4 +56,4 @@ dkms.conf
 
 emu6502
 compile_flags.txt
-6502_functional_test.*
+6502_functional_test*

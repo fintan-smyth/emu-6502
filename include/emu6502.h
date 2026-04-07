@@ -10,6 +10,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include "fslib.h"
 
 #define FLAG_C 1
 #define FLAG_Z 2
@@ -43,6 +45,16 @@
 
 #define SET_BIT(var, mask, expr) \
     ((var) = ((var) & ~(mask)) | ((!!(expr)) ? (mask) : 0))
+
+#define COL_BLACK 0
+#define COL_RED 1
+#define COL_GREEN 2
+#define COL_YELLOW 3
+#define COL_BLUE 4
+#define COL_MAGENTA 5
+#define COL_CYAN 6
+#define COL_WHITE 7
+
 
 typedef enum e_addr_mode
 {
@@ -160,5 +172,6 @@ const char			*get_addrmode_str(AddrMode mode);
 void	execute_instr(t_cpu *cpu, const t_instruct *instr);
 void	print_instr(uint8_t *mem, uint16_t addr);
 void 	print_registers(t_cpu *cpu);
+void	print_debug_view(t_cpu *cpu, uint16_t pc);
 
 #endif

@@ -264,10 +264,11 @@ void exec_AND(t_cpu *cpu, const t_instruct *instr)
 
 void exec_BIT(t_cpu *cpu, const t_instruct *instr)
 {
-	uint8_t result = cpu->a & get_operand(cpu, instr->addrmode);
-	SET_BIT(cpu->status, FLAG_N, result & SIGN_BIT);
+	uint8_t op = get_operand(cpu, instr->addrmode);
+	uint8_t result = cpu->a & op;
+	SET_BIT(cpu->status, FLAG_N, op & SIGN_BIT);
+	SET_BIT(cpu->status, FLAG_V, op & BIT_6);
 	SET_BIT(cpu->status, FLAG_Z, result == 0);
-	SET_BIT(cpu->status, FLAG_V, result & BIT_6);
 	cpu->pc += instr->n_bytes;
 }
 
@@ -292,16 +293,28 @@ void exec_ORA(t_cpu *cpu, const t_instruct *instr)
 void exec_ADC(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t op = get_operand(cpu, instr->addrmode);
-	uint16_t sum = cpu->a + op + (cpu->status & BIT_0);
-	bool carry = sum > 0xFF;
+	uint16_t sum = cpu->a + op + (cpu->status & FLAG_C);
+
 	bool overflow = ~(op ^ cpu->a) & (sum ^ cpu->a) & SIGN_BIT;
+	SET_BIT(cpu->status, FLAG_V, overflow);
+	SET_BIT(cpu->status, FLAG_N, sum & SIGN_BIT);
+	SET_BIT(cpu->status, FLAG_Z, (sum & 0xFF) == 0);
+
+	if (cpu->status & FLAG_D)
+	{
+		if ((sum & 0x0F) > 9 || ((cpu->a ^ op ^ sum) & 0x10))
+			sum += 0x06;
+
+		SET_BIT(cpu->status, FLAG_C, sum > 0x9F || (sum & 0x100));
+		if (cpu->status & FLAG_C)
+			sum += 0x60;
+	}
+	else
+	{
+		SET_BIT(cpu->status, FLAG_C, sum > 0xFF);
+	}
 
 	cpu->a = (uint8_t)sum;
-
-	SET_BIT(cpu->status, FLAG_C, carry);
-	SET_BIT(cpu->status, FLAG_V, overflow);
-	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);
-	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 	cpu->pc += instr->n_bytes;
 }
 
@@ -337,17 +350,30 @@ void exec_CPY(t_cpu *cpu, const t_instruct *instr)
 
 void exec_SBC(t_cpu *cpu, const t_instruct *instr)
 {
-	uint8_t op = ~get_operand(cpu, instr->addrmode);
+	uint8_t unflipped = get_operand(cpu, instr->addrmode);
+	uint8_t op = ~unflipped;
 	uint16_t sum = cpu->a + op + (cpu->status & FLAG_C);
-	bool carry = sum > 0xFF;
-	bool overflow = (op ^ cpu->a) & (sum ^ cpu->a) & SIGN_BIT;
+
+	bool overflow = ~(op ^ cpu->a) & (sum ^ cpu->a) & SIGN_BIT;
+	SET_BIT(cpu->status, FLAG_V, overflow);
+	SET_BIT(cpu->status, FLAG_N, sum & SIGN_BIT);
+	SET_BIT(cpu->status, FLAG_Z, (sum & 0xFF) == 0);
+
+	if (cpu->status & FLAG_D)
+	{
+		if ((cpu->a ^ unflipped ^ sum) & 0x10)
+			sum -= 0x06;
+
+		if (sum < 0x100)
+			sum -= 0x60;
+		SET_BIT(cpu->status, FLAG_C, sum >= 0x100);
+	}
+	else
+	{
+		SET_BIT(cpu->status, FLAG_C, sum > 0xFF);
+	}
 
 	cpu->a = (uint8_t)sum;
-
-	SET_BIT(cpu->status, FLAG_C, carry);
-	SET_BIT(cpu->status, FLAG_V, overflow);
-	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);
-	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 	cpu->pc += instr->n_bytes;
 }
 
