@@ -59,8 +59,12 @@ void	load_program(t_cpu *cpu, const char *path)
 		return ;
 
 	int fd = open(path, O_RDONLY);
-	read(fd, &cpu->memory[0], size);
+	uint8_t *buf = malloc(size);
+	read(fd, buf, size);
+	memcpy(&cpu->memory[0x8000], &buf[16], 0x4000);
+	memcpy(&cpu->memory[0xC000], &buf[16], 0x4000);
 	// read(fd, &cpu->memory[10], size);
+	free(buf);
 	close(fd);
 }
 
@@ -153,7 +157,7 @@ int	main(int argc, char **argv)
 	// uint16_t reset_vec = read_word(&cpu, 0xFFFC);
 	// printf("Reset vector: %04X\n", reset_vec);
 	// getchar();
-	cpu.pc = 0x400;
+	cpu.pc = 0xC000;
 
 
 	set_term_settings();
