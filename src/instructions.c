@@ -4,262 +4,262 @@
 #include <sys/types.h>
 
 static const t_instruct codes[256] = {
-	[0x00] = { .instruction = BRK, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x01] = { .instruction = ORA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
+	[0x00] = { .instruction = BRK, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 7 },
+	[0x01] = { .instruction = ORA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
 	[0x02] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x03] = { .instruction = SLO, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0x04] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x05] = { .instruction = ORA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x06] = { .instruction = ASL, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x07] = { .instruction = SLO, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x08] = { .instruction = PHP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x09] = { .instruction = ORA, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x0A] = { .instruction = ASL, .n_bytes = 1, .addrmode = ACCUMULATOR, .cycles = 255 },
-	[0x0B] = { .instruction = SLO, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x0C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x0D] = { .instruction = ORA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x0E] = { .instruction = ASL, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x0F] = { .instruction = SLO, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x10] = { .instruction = BPL, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 255 },
-	[0x11] = { .instruction = ORA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
+	[0x03] = { .instruction = SLO, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 8 },
+	[0x04] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x05] = { .instruction = ORA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x06] = { .instruction = ASL, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0x07] = { .instruction = SLO, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0x08] = { .instruction = PHP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 3 },
+	[0x09] = { .instruction = ORA, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x0A] = { .instruction = ASL, .n_bytes = 1, .addrmode = ACCUMULATOR, .cycles = 2 },
+	[0x0B] = { .instruction = ANC, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x0C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x0D] = { .instruction = ORA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x0E] = { .instruction = ASL, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0x0F] = { .instruction = SLO, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0x10] = { .instruction = BPL, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 2 | CYCLE_BRANCHTAKEN},
+	[0x11] = { .instruction = ORA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 5 | CYCLE_PAGECROSS },
 	[0x12] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x13] = { .instruction = SLO, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
-	[0x14] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x15] = { .instruction = ORA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x16] = { .instruction = ASL, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x17] = { .instruction = SLO, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x18] = { .instruction = CLC, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x19] = { .instruction = ORA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x1A] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x1B] = { .instruction = SLO, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x1C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x1D] = { .instruction = ORA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x1E] = { .instruction = ASL, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x1F] = { .instruction = SLO, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x20] = { .instruction = JSR, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x21] = { .instruction = AND, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
+	[0x13] = { .instruction = SLO, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 8 },
+	[0x14] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x15] = { .instruction = ORA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x16] = { .instruction = ASL, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0x17] = { .instruction = SLO, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0x18] = { .instruction = CLC, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x19] = { .instruction = ORA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x1A] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x1B] = { .instruction = SLO, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 7 },
+	[0x1C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x1D] = { .instruction = ORA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x1E] = { .instruction = ASL, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0x1F] = { .instruction = SLO, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0x20] = { .instruction = JSR, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0x21] = { .instruction = AND, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
 	[0x22] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x23] = { .instruction = RLA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0x24] = { .instruction = BIT, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x25] = { .instruction = AND, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x26] = { .instruction = ROL, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x27] = { .instruction = RLA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x28] = { .instruction = PLP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x29] = { .instruction = AND, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x2A] = { .instruction = ROL, .n_bytes = 1, .addrmode = ACCUMULATOR, .cycles = 255 },
-	[0x2B] = { .instruction = SLO, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x2C] = { .instruction = BIT, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x2D] = { .instruction = AND, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x2E] = { .instruction = ROL, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x2F] = { .instruction = RLA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x30] = { .instruction = BMI, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 255 },
-	[0x31] = { .instruction = AND, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
+	[0x23] = { .instruction = RLA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 8 },
+	[0x24] = { .instruction = BIT, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x25] = { .instruction = AND, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x26] = { .instruction = ROL, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0x27] = { .instruction = RLA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0x28] = { .instruction = PLP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 4 },
+	[0x29] = { .instruction = AND, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x2A] = { .instruction = ROL, .n_bytes = 1, .addrmode = ACCUMULATOR, .cycles = 2 },
+	[0x2B] = { .instruction = ANC, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x2C] = { .instruction = BIT, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x2D] = { .instruction = AND, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x2E] = { .instruction = ROL, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles =  6 },
+	[0x2F] = { .instruction = RLA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0x30] = { .instruction = BMI, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 2 | CYCLE_BRANCHTAKEN },
+	[0x31] = { .instruction = AND, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 5 | CYCLE_PAGECROSS },
 	[0x32] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x33] = { .instruction = RLA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
-	[0x34] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x35] = { .instruction = AND, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x36] = { .instruction = ROL, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x37] = { .instruction = RLA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x38] = { .instruction = SEC, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x39] = { .instruction = AND, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x3A] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x3B] = { .instruction = RLA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x3C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x3D] = { .instruction = AND, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x3E] = { .instruction = ROL, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x3F] = { .instruction = RLA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x40] = { .instruction = RTI, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x41] = { .instruction = EOR, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
+	[0x33] = { .instruction = RLA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 8 },
+	[0x34] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x35] = { .instruction = AND, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x36] = { .instruction = ROL, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0x37] = { .instruction = RLA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0x38] = { .instruction = SEC, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x39] = { .instruction = AND, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x3A] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x3B] = { .instruction = RLA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 7 },
+	[0x3C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x3D] = { .instruction = AND, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x3E] = { .instruction = ROL, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0x3F] = { .instruction = RLA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0x40] = { .instruction = RTI, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 6 },
+	[0x41] = { .instruction = EOR, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
 	[0x42] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x43] = { .instruction = SRE, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0x44] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x45] = { .instruction = EOR, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x46] = { .instruction = LSR, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x47] = { .instruction = SRE, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x48] = { .instruction = PHA, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x49] = { .instruction = EOR, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x4A] = { .instruction = LSR, .n_bytes = 1, .addrmode = ACCUMULATOR, .cycles = 255 },
-	[0x4B] = { .instruction = ALR, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x4C] = { .instruction = JMP, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x4D] = { .instruction = EOR, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x4E] = { .instruction = LSR, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x4F] = { .instruction = SRE, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x50] = { .instruction = BVC, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 255 },
-	[0x51] = { .instruction = EOR, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
+	[0x43] = { .instruction = SRE, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 8 },
+	[0x44] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x45] = { .instruction = EOR, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x46] = { .instruction = LSR, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0x47] = { .instruction = SRE, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0x48] = { .instruction = PHA, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 3 },
+	[0x49] = { .instruction = EOR, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x4A] = { .instruction = LSR, .n_bytes = 1, .addrmode = ACCUMULATOR, .cycles = 2 },
+	[0x4B] = { .instruction = ASR, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x4C] = { .instruction = JMP, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 3 },
+	[0x4D] = { .instruction = EOR, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x4E] = { .instruction = LSR, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0x4F] = { .instruction = SRE, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0x50] = { .instruction = BVC, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 2 | CYCLE_BRANCHTAKEN },
+	[0x51] = { .instruction = EOR, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 5 | CYCLE_PAGECROSS},
 	[0x52] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x53] = { .instruction = SRE, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
-	[0x54] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x55] = { .instruction = EOR, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x56] = { .instruction = LSR, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x57] = { .instruction = SRE, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x58] = { .instruction = CLI, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x59] = { .instruction = EOR, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x5A] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x5B] = { .instruction = SRE, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x5C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x5D] = { .instruction = EOR, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x5E] = { .instruction = LSR, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x5F] = { .instruction = SRE, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x60] = { .instruction = RTS, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x61] = { .instruction = ADC, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
+	[0x53] = { .instruction = SRE, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 8 },
+	[0x54] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x55] = { .instruction = EOR, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x56] = { .instruction = LSR, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0x57] = { .instruction = SRE, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0x58] = { .instruction = CLI, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x59] = { .instruction = EOR, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x5A] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x5B] = { .instruction = SRE, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 7 },
+	[0x5C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x5D] = { .instruction = EOR, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x5E] = { .instruction = LSR, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0x5F] = { .instruction = SRE, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0x60] = { .instruction = RTS, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 6 },
+	[0x61] = { .instruction = ADC, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
 	[0x62] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x63] = { .instruction = RRA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0x64] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x65] = { .instruction = ADC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x66] = { .instruction = ROR, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x67] = { .instruction = RRA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x68] = { .instruction = PLA, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x69] = { .instruction = ADC, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x6A] = { .instruction = ROR, .n_bytes = 1, .addrmode = ACCUMULATOR, .cycles = 255 },
-	[0x6B] = { .instruction = ARR, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x6C] = { .instruction = JMP, .n_bytes = 3, .addrmode = ABSOLUTE_INDIRECT, .cycles = 255 },
-	[0x6D] = { .instruction = ADC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x6E] = { .instruction = ROR, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x6F] = { .instruction = RRA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x70] = { .instruction = BVS, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 255 },
-	[0x71] = { .instruction = ADC, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
+	[0x63] = { .instruction = RRA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 8 },
+	[0x64] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x65] = { .instruction = ADC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x66] = { .instruction = ROR, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0x67] = { .instruction = RRA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0x68] = { .instruction = PLA, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 4 },
+	[0x69] = { .instruction = ADC, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x6A] = { .instruction = ROR, .n_bytes = 1, .addrmode = ACCUMULATOR, .cycles = 2 },
+	[0x6B] = { .instruction = ARR, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x6C] = { .instruction = JMP, .n_bytes = 3, .addrmode = ABSOLUTE_INDIRECT, .cycles = 5 },
+	[0x6D] = { .instruction = ADC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x6E] = { .instruction = ROR, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0x6F] = { .instruction = RRA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0x70] = { .instruction = BVS, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 2 | CYCLE_BRANCHTAKEN },
+	[0x71] = { .instruction = ADC, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 5 | CYCLE_PAGECROSS },
 	[0x72] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x73] = { .instruction = RRA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
-	[0x74] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x75] = { .instruction = ADC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x76] = { .instruction = ROR, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x77] = { .instruction = RRA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x78] = { .instruction = SEI, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x79] = { .instruction = ADC, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x7A] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x7B] = { .instruction = RRA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x7C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x7D] = { .instruction = ADC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x7E] = { .instruction = ROR, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x7F] = { .instruction = RRA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x80] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x81] = { .instruction = STA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0x82] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x83] = { .instruction = AXS, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0x84] = { .instruction = STY, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x85] = { .instruction = STA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x86] = { .instruction = STX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x87] = { .instruction = AXS, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0x88] = { .instruction = DEY, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x89] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x8A] = { .instruction = TXA, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x8B] = { .instruction = XAA, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0x8C] = { .instruction = STY, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x8D] = { .instruction = STA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x8E] = { .instruction = STX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x8F] = { .instruction = AXS, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0x90] = { .instruction = BCC, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 255 },
-	[0x91] = { .instruction = STA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
+	[0x73] = { .instruction = RRA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 8 },
+	[0x74] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x75] = { .instruction = ADC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x76] = { .instruction = ROR, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0x77] = { .instruction = RRA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0x78] = { .instruction = SEI, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x79] = { .instruction = ADC, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x7A] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x7B] = { .instruction = RRA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 7 },
+	[0x7C] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x7D] = { .instruction = ADC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0x7E] = { .instruction = ROR, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0x7F] = { .instruction = RRA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0x80] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x81] = { .instruction = STA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
+	[0x82] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x83] = { .instruction = SAX, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
+	[0x84] = { .instruction = STY, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x85] = { .instruction = STA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x86] = { .instruction = STX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x87] = { .instruction = SAX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0x88] = { .instruction = DEY, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x89] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x8A] = { .instruction = TXA, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x8B] = { .instruction = XAA, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0x8C] = { .instruction = STY, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x8D] = { .instruction = STA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x8E] = { .instruction = STX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x8F] = { .instruction = SAX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0x90] = { .instruction = BCC, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 2 | CYCLE_BRANCHTAKEN },
+	[0x91] = { .instruction = STA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 6 },
 	[0x92] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x93] = { .instruction = SOA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
-	[0x94] = { .instruction = STY, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x95] = { .instruction = STA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0x96] = { .instruction = STX, .n_bytes = 2, .addrmode = ZEROPAGE_Y, .cycles = 255 },
-	[0x97] = { .instruction = AXS, .n_bytes = 2, .addrmode = ZEROPAGE_Y, .cycles = 255 },
-	[0x98] = { .instruction = TYA, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x99] = { .instruction = STA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x9A] = { .instruction = TXS, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0x9B] = { .instruction = TOS, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x9C] = { .instruction = SOY, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x9D] = { .instruction = STA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0x9E] = { .instruction = SOX, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0x9F] = { .instruction = SOA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xA0] = { .instruction = LDY, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xA1] = { .instruction = LDA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0xA2] = { .instruction = LDX, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xA3] = { .instruction = LAX, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0xA4] = { .instruction = LDY, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xA5] = { .instruction = LDA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xA6] = { .instruction = LDX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xA7] = { .instruction = LAX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xA8] = { .instruction = TAY, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xA9] = { .instruction = LDA, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xAA] = { .instruction = TAX, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xAB] = { .instruction = OAL, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xAC] = { .instruction = LDY, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xAD] = { .instruction = LDA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xAE] = { .instruction = LDX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xAF] = { .instruction = LAX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xB0] = { .instruction = BCS, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 255 },
-	[0xB1] = { .instruction = LDA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
+	[0x93] = { .instruction = SHA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 6 },
+	[0x94] = { .instruction = STY, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x95] = { .instruction = STA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0x96] = { .instruction = STX, .n_bytes = 2, .addrmode = ZEROPAGE_Y, .cycles = 4 },
+	[0x97] = { .instruction = SAX, .n_bytes = 2, .addrmode = ZEROPAGE_Y, .cycles = 4 },
+	[0x98] = { .instruction = TYA, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x99] = { .instruction = STA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 5 },
+	[0x9A] = { .instruction = TXS, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0x9B] = { .instruction = SHS, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 5 },
+	[0x9C] = { .instruction = SHY, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 5 },
+	[0x9D] = { .instruction = STA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 5 },
+	[0x9E] = { .instruction = SHX, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 5 },
+	[0x9F] = { .instruction = SHA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 5 },
+	[0xA0] = { .instruction = LDY, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xA1] = { .instruction = LDA, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
+	[0xA2] = { .instruction = LDX, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xA3] = { .instruction = LAX, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
+	[0xA4] = { .instruction = LDY, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0xA5] = { .instruction = LDA, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0xA6] = { .instruction = LDX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0xA7] = { .instruction = LAX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0xA8] = { .instruction = TAY, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xA9] = { .instruction = LDA, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xAA] = { .instruction = TAX, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xAB] = { .instruction = OAL, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xAC] = { .instruction = LDY, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0xAD] = { .instruction = LDA, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0xAE] = { .instruction = LDX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0xAF] = { .instruction = LAX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0xB0] = { .instruction = BCS, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 2 | CYCLE_BRANCHTAKEN },
+	[0xB1] = { .instruction = LDA, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 5 | CYCLE_PAGECROSS },
 	[0xB2] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xB3] = { .instruction = LAX, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
-	[0xB4] = { .instruction = LDY, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xB5] = { .instruction = LDA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xB6] = { .instruction = LDX, .n_bytes = 2, .addrmode = ZEROPAGE_Y, .cycles = 255 },
-	[0xB7] = { .instruction = LAX, .n_bytes = 2, .addrmode = ZEROPAGE_Y, .cycles = 255 },
-	[0xB8] = { .instruction = CLV, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xB9] = { .instruction = LDA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xBA] = { .instruction = TSX, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xBB] = { .instruction = SXA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xBC] = { .instruction = LDY, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xBD] = { .instruction = LDA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xBE] = { .instruction = LDX, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xBF] = { .instruction = LAX, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xC0] = { .instruction = CPY, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xC1] = { .instruction = CMP, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0xC2] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xC3] = { .instruction = DCM, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0xC4] = { .instruction = CPY, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xC5] = { .instruction = CMP, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xC6] = { .instruction = DEC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xC7] = { .instruction = DCM, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xC8] = { .instruction = INY, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xC9] = { .instruction = CMP, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xCA] = { .instruction = DEX, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xCB] = { .instruction = SBX, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xCC] = { .instruction = CPY, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xCD] = { .instruction = CMP, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xCE] = { .instruction = DEC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xCF] = { .instruction = DCM, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xD0] = { .instruction = BNE, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 255 },
-	[0xD1] = { .instruction = CMP, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
+	[0xB3] = { .instruction = LAX, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 5 | CYCLE_PAGECROSS },
+	[0xB4] = { .instruction = LDY, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0xB5] = { .instruction = LDA, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0xB6] = { .instruction = LDX, .n_bytes = 2, .addrmode = ZEROPAGE_Y, .cycles = 4 },
+	[0xB7] = { .instruction = LAX, .n_bytes = 2, .addrmode = ZEROPAGE_Y, .cycles = 4 },
+	[0xB8] = { .instruction = CLV, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xB9] = { .instruction = LDA, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xBA] = { .instruction = TSX, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xBB] = { .instruction = LAS, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xBC] = { .instruction = LDY, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xBD] = { .instruction = LDA, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xBE] = { .instruction = LDX, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xBF] = { .instruction = LAX, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xC0] = { .instruction = CPY, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xC1] = { .instruction = CMP, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
+	[0xC2] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xC3] = { .instruction = DCP, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 8 },
+	[0xC4] = { .instruction = CPY, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0xC5] = { .instruction = CMP, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0xC6] = { .instruction = DEC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0xC7] = { .instruction = DCP, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0xC8] = { .instruction = INY, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xC9] = { .instruction = CMP, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xCA] = { .instruction = DEX, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xCB] = { .instruction = SBX, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xCC] = { .instruction = CPY, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0xCD] = { .instruction = CMP, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0xCE] = { .instruction = DEC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0xCF] = { .instruction = DCP, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0xD0] = { .instruction = BNE, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 2 | CYCLE_BRANCHTAKEN },
+	[0xD1] = { .instruction = CMP, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 5 | CYCLE_PAGECROSS },
 	[0xD2] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xD3] = { .instruction = DCM, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
-	[0xD4] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xD5] = { .instruction = CMP, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xD6] = { .instruction = DEC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xD7] = { .instruction = DCM, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xD8] = { .instruction = CLD, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xD9] = { .instruction = CMP, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xDA] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xDB] = { .instruction = DCM, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xDC] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xDD] = { .instruction = CMP, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xDE] = { .instruction = DEC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xDF] = { .instruction = DCM, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xE0] = { .instruction = CPX, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xE1] = { .instruction = SBC, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0xE2] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xE3] = { .instruction = INS, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 255 },
-	[0xE4] = { .instruction = CPX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xE5] = { .instruction = SBC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xE6] = { .instruction = INC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xE7] = { .instruction = INS, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 255 },
-	[0xE8] = { .instruction = INX, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xE9] = { .instruction = SBC, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xEA] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xEB] = { .instruction = SBC, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 255 },
-	[0xEC] = { .instruction = CPX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xED] = { .instruction = SBC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xEE] = { .instruction = INC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xEF] = { .instruction = INS, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 255 },
-	[0xF0] = { .instruction = BEQ, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 255 },
-	[0xF1] = { .instruction = SBC, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
+	[0xD3] = { .instruction = DCP, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 8 },
+	[0xD4] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0xD5] = { .instruction = CMP, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0xD6] = { .instruction = DEC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0xD7] = { .instruction = DCP, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0xD8] = { .instruction = CLD, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xD9] = { .instruction = CMP, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xDA] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xDB] = { .instruction = DCP, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 7 },
+	[0xDC] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xDD] = { .instruction = CMP, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xDE] = { .instruction = DEC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0xDF] = { .instruction = DCP, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0xE0] = { .instruction = CPX, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xE1] = { .instruction = SBC, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 6 },
+	[0xE2] = { .instruction = SKB, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xE3] = { .instruction = ISC, .n_bytes = 2, .addrmode = ZEROPAGE_X_INDIRECT, .cycles = 8 },
+	[0xE4] = { .instruction = CPX, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0xE5] = { .instruction = SBC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 3 },
+	[0xE6] = { .instruction = INC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0xE7] = { .instruction = ISC, .n_bytes = 2, .addrmode = ZEROPAGE, .cycles = 5 },
+	[0xE8] = { .instruction = INX, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xE9] = { .instruction = SBC, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xEA] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xEB] = { .instruction = SBC, .n_bytes = 2, .addrmode = IMMEDIATE, .cycles = 2 },
+	[0xEC] = { .instruction = CPX, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0xED] = { .instruction = SBC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 4 },
+	[0xEE] = { .instruction = INC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0xEF] = { .instruction = ISC, .n_bytes = 3, .addrmode = ABSOLUTE, .cycles = 6 },
+	[0xF0] = { .instruction = BEQ, .n_bytes = 2, .addrmode = RELATIVE, .cycles = 2 | CYCLE_BRANCHTAKEN },
+	[0xF1] = { .instruction = SBC, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 5 | CYCLE_PAGECROSS },
 	[0xF2] = { .instruction = HLT, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xF3] = { .instruction = INS, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 255 },
-	[0xF4] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xF5] = { .instruction = SBC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xF6] = { .instruction = INC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xF7] = { .instruction = INS, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 255 },
-	[0xF8] = { .instruction = SED, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xF9] = { .instruction = SBC, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xFA] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 255 },
-	[0xFB] = { .instruction = INS, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 255 },
-	[0xFC] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xFD] = { .instruction = SBC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xFE] = { .instruction = INC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
-	[0xFF] = { .instruction = INS, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 255 },
+	[0xF3] = { .instruction = ISC, .n_bytes = 2, .addrmode = ZEROPAGE_Y_INDIRECT, .cycles = 8 },
+	[0xF4] = { .instruction = SKB, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0xF5] = { .instruction = SBC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 4 },
+	[0xF6] = { .instruction = INC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0xF7] = { .instruction = ISC, .n_bytes = 2, .addrmode = ZEROPAGE_X, .cycles = 6 },
+	[0xF8] = { .instruction = SED, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xF9] = { .instruction = SBC, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xFA] = { .instruction = NOP, .n_bytes = 1, .addrmode = IMPLIED, .cycles = 2 },
+	[0xFB] = { .instruction = ISC, .n_bytes = 3, .addrmode = ABSOLUTE_Y, .cycles = 7 },
+	[0xFC] = { .instruction = SKW, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xFD] = { .instruction = SBC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 4 | CYCLE_PAGECROSS },
+	[0xFE] = { .instruction = INC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
+	[0xFF] = { .instruction = ISC, .n_bytes = 3, .addrmode = ABSOLUTE_X, .cycles = 7 },
 };
 
 const t_instruct *get_instruction(uint8_t opcode)
@@ -732,60 +732,62 @@ void exec_RTS(t_cpu *cpu, const t_instruct *instr)
 	(void)instr;
 }
 
-void exec_BCC(t_cpu *cpu, const t_instruct *instr)
+void exec_branch_core(t_cpu *cpu, const t_instruct *instr, bool branch)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
-	cpu->addrbus += instr->n_bytes;
-	cpu->pc = !(cpu->status & FLAG_C) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
+
+	if (branch)
+	{
+		cpu->cycle_events |= CYCLE_BRANCHTAKEN;
+		print_instr(cpu->memory, cpu->pc);
+		printf("%04X -> %04X\n", cpu->pc, cpu->addrbus + instr->n_bytes);
+		if (cpu->cycle_events & CYCLE_PAGECROSS)
+			printf("PAGE CROSSED\n");
+		printf("----------\n");
+		cpu->pc = cpu->addrbus;
+	}
+
+	cpu->pc += instr->n_bytes;
+}
+
+void exec_BCC(t_cpu *cpu, const t_instruct *instr)
+{
+	exec_branch_core(cpu, instr, !(cpu->status & FLAG_C));
 }
 
 void exec_BCS(t_cpu *cpu, const t_instruct *instr)
 {
-	cpu->addrbus = get_addr(cpu, instr->addrmode);
-	cpu->addrbus += instr->n_bytes;
-	cpu->pc = (cpu->status & FLAG_C) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
+	exec_branch_core(cpu, instr, (cpu->status & FLAG_C));
 }
 
 void exec_BEQ(t_cpu *cpu, const t_instruct *instr)
 {
-	cpu->addrbus = get_addr(cpu, instr->addrmode);
-	cpu->addrbus += instr->n_bytes;
-	cpu->pc = (cpu->status & FLAG_Z) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
+	exec_branch_core(cpu, instr, (cpu->status & FLAG_Z));
 }
 
 void exec_BMI(t_cpu *cpu, const t_instruct *instr)
 {
-	cpu->addrbus = get_addr(cpu, instr->addrmode);
-	cpu->addrbus += instr->n_bytes;
-	cpu->pc = (cpu->status & FLAG_N) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
+	exec_branch_core(cpu, instr, (cpu->status & FLAG_N));
 }
 
 void exec_BNE(t_cpu *cpu, const t_instruct *instr)
 {
-	cpu->addrbus = get_addr(cpu, instr->addrmode);
-	cpu->addrbus += instr->n_bytes;
-	cpu->pc = !(cpu->status & FLAG_Z) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
+	exec_branch_core(cpu, instr, !(cpu->status & FLAG_Z));
 }
 
 void exec_BPL(t_cpu *cpu, const t_instruct *instr)
 {
-	cpu->addrbus = get_addr(cpu, instr->addrmode);
-	cpu->addrbus += instr->n_bytes;
-	cpu->pc = !(cpu->status & FLAG_N) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
+	exec_branch_core(cpu, instr, !(cpu->status & FLAG_N));
 }
 
 void exec_BVC(t_cpu *cpu, const t_instruct *instr)
 {
-	cpu->addrbus = get_addr(cpu, instr->addrmode);
-	cpu->addrbus += instr->n_bytes;
-	cpu->pc = !(cpu->status & FLAG_V) ? cpu->addrbus   : cpu->pc + instr->n_bytes;
+	exec_branch_core(cpu, instr, !(cpu->status & FLAG_V));
 }
 
 void exec_BVS(t_cpu *cpu, const t_instruct *instr)
 {
-	cpu->addrbus = get_addr(cpu, instr->addrmode);
-	cpu->addrbus += instr->n_bytes;
-	cpu->pc = (cpu->status & FLAG_V) ? cpu->addrbus  : cpu->pc + instr->n_bytes;
+	exec_branch_core(cpu, instr, (cpu->status & FLAG_V));
 }
 
 void exec_CLC(t_cpu *cpu, const t_instruct *instr)
@@ -846,12 +848,14 @@ void exec_HLT(t_cpu *cpu, const t_instruct *instr)
 
 void exec_SKB(t_cpu *cpu, const t_instruct *instr)
 {
+	(void)get_operand(cpu, instr->addrmode);
 	cpu->pc += instr->n_bytes;
 	return ;
 }
 
 void exec_SKW(t_cpu *cpu, const t_instruct *instr)
 {
+	(void)get_operand(cpu, instr->addrmode);
 	cpu->pc += instr->n_bytes;
 	return ;
 }
@@ -888,7 +892,7 @@ void exec_RRA(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_AXS(t_cpu *cpu, const t_instruct *instr)
+void exec_SAX(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t op = cpu->x & cpu->a;
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
@@ -896,7 +900,7 @@ void exec_AXS(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SOA(t_cpu *cpu, const t_instruct *instr)
+void exec_SHA(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	uint8_t op = cpu->x & cpu->a & (((cpu->addrbus >> 8) & 0xFF) + 1);
@@ -904,7 +908,7 @@ void exec_SOA(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SOX(t_cpu *cpu, const t_instruct *instr)
+void exec_SHX(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	uint8_t op = cpu->x & (((cpu->addrbus >> 8) & 0xFF) + 1);
@@ -912,7 +916,7 @@ void exec_SOX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SOY(t_cpu *cpu, const t_instruct *instr)
+void exec_SHY(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	uint8_t op = cpu->y & (((cpu->addrbus >> 8) & 0xFF) + 1);
@@ -928,7 +932,7 @@ void exec_LAX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_DCM(t_cpu *cpu, const t_instruct *instr)
+void exec_DCP(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t *op_addr = get_operand_addr(cpu, instr->addrmode);
 	exec_decrement_core(cpu, op_addr);
@@ -961,7 +965,7 @@ void exec_XAA(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_TOS(t_cpu *cpu, const t_instruct *instr)
+void exec_SHS(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->pc += instr->n_bytes;
 }
@@ -975,7 +979,7 @@ void exec_OAL(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SXA(t_cpu *cpu, const t_instruct *instr)
+void exec_LAS(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->sp &= get_operand(cpu, instr->addrmode);
 	cpu->a = cpu->sp;
@@ -993,7 +997,7 @@ void exec_SBX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_INS(t_cpu *cpu, const t_instruct *instr)
+void exec_ISC(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t *op_addr = get_operand_addr(cpu, instr->addrmode);
 	exec_increment_core(cpu, op_addr);
@@ -1001,10 +1005,17 @@ void exec_INS(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ALR(t_cpu *cpu, const t_instruct *instr)
+void exec_ASR(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->a &= get_operand(cpu, instr->addrmode);
 	exec_LSR_core(cpu, &cpu->a);
+	cpu->pc += instr->n_bytes;
+}
+
+void exec_ANC(t_cpu *cpu, const t_instruct *instr)
+{
+	exec_AND_core(cpu, get_operand(cpu, instr->addrmode));
+	SET_BIT(cpu->status, FLAG_C, cpu->a & BIT_7);
 	cpu->pc += instr->n_bytes;
 }
 
@@ -1072,26 +1083,58 @@ static void (*const instr_funcs[])(t_cpu *, const t_instruct *) = {
 	[RLA] = exec_RLA,
 	[SRE] = exec_SRE,
 	[RRA] = exec_RRA,
-	[AXS] = exec_AXS,
-	[SOA] = exec_SOA,
-	[SOX] = exec_SOX,
-	[SOY] = exec_SOY,
+	[SAX] = exec_SAX,
+	[SHA] = exec_SHA,
+	[SHX] = exec_SHX,
+	[SHY] = exec_SHY,
 	[LAX] = exec_LAX,
-	[DCM] = exec_DCM,
+	[DCP] = exec_DCP,
 	[ARR] = exec_ARR,
 	[XAA] = exec_XAA,
-	[TOS] = exec_TOS,
+	[SHS] = exec_SHS,
 	[OAL] = exec_OAL,
-	[SXA] = exec_SXA,
+	[LAS] = exec_LAS,
 	[SBX] = exec_SBX,
-	[INS] = exec_INS,
-	[ALR] = exec_ALR,
+	[ISC] = exec_ISC,
+	[ASR] = exec_ASR,
+	[ANC] = exec_ANC,
 };
 
+void	handle_cycles(t_cpu *cpu, const t_instruct *instr)
+{
+	uint8_t cycles = 0;
+	cycles += instr->cycles & 0x0F;
+
+	switch (instr->cycles & 0xF0)
+	{
+		case (CYCLE_PAGECROSS):
+			if (cpu->cycle_events & CYCLE_PAGECROSS)
+				cycles++;
+			break;
+
+		case (CYCLE_BRANCHTAKEN):
+			if (cpu->cycle_events & CYCLE_BRANCHTAKEN)
+			{
+				cycles++;
+				if (cpu->cycle_events & CYCLE_PAGECROSS)
+					cycles++;
+			}
+			break;
+
+		default:
+			break ;
+	}
+	cpu->cycles += cycles;
+}
 
 void	execute_instr(t_cpu *cpu, const t_instruct *instr)
 {
-	log_instr(cpu->logfd, cpu, instr);
+	#ifdef NES_MODE
+		log_instr(cpu->logfd, cpu, instr);
+	#endif
+
+	cpu->cycle_events = 0;
+
 	instr_funcs[instr->instruction](cpu, instr);
-	cpu->cycles++;
+	handle_cycles(cpu, instr);
 }

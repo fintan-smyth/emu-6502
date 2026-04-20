@@ -56,11 +56,16 @@ u_int16_t	handle_zeropage_y_indirect(t_cpu *cpu)
 
 uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 {
-	uint16_t addrbus = 0x0;
-	uint16_t ptr;
+	uint16_t	addrbus = 0x0;
+	uint16_t	ptr;
+	int8_t		rel;
 	switch (mode) {
 		case (RELATIVE):
-			addrbus = cpu->pc + (int8_t)read_byte(cpu, cpu->pc + 1);
+			rel = read_byte(cpu, cpu->pc + 1);
+			ptr = cpu->pc + 2;
+			addrbus = cpu->pc + rel;
+			if ((ptr & 0xFF00) != ((addrbus + 2) & 0xFF00))
+				cpu->cycle_events |= CYCLE_PAGECROSS;
 			break;
 		case (ZEROPAGE):
 			addrbus = read_byte(cpu, cpu->pc + 1);
@@ -82,6 +87,8 @@ uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 			// addrbus = handle_zeropage_y_indirect(cpu);
 			addrbus = read_byte(cpu, cpu->pc + 1);
 			addrbus = read_word_zp(cpu, addrbus);
+			if ((addrbus & 0xFF) + cpu->y > 0xFF)
+				cpu->cycle_events |= CYCLE_PAGECROSS;
 			addrbus += cpu->y;
 			break;
 		case (ABSOLUTE):
@@ -89,10 +96,14 @@ uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 			break;
 		case (ABSOLUTE_X):
 			addrbus = read_word(cpu, cpu->pc + 1);
+			if ((addrbus & 0xFF) + cpu->x > 0xFF)
+				cpu->cycle_events |= CYCLE_PAGECROSS;
 			addrbus += cpu->x;
 			break;
 		case (ABSOLUTE_Y):
 			addrbus = read_word(cpu, cpu->pc + 1);
+			if ((addrbus & 0xFF) + cpu->y > 0xFF)
+				cpu->cycle_events |= CYCLE_PAGECROSS;
 			addrbus += cpu->y;
 			break;
 		case (ABSOLUTE_INDIRECT):

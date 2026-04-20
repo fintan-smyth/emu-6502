@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-static const int instr_cols[INSTRUCTIONS_MAX] = {
+static const int instr_cols[ISCTRUCTIONS_MAX] = {
 	[LDA] = COL_RED,
 	[LDX] = COL_RED,
 	[LDY] = COL_RED,
@@ -68,20 +68,20 @@ static const int instr_cols[INSTRUCTIONS_MAX] = {
 	[RLA] = COL_WHITE,
 	[SRE] = COL_WHITE,
 	[RRA] = COL_WHITE,
-	[AXS] = COL_WHITE,
-	[SOA] = COL_WHITE,
-	[SOX] = COL_WHITE,
-	[SOY] = COL_WHITE,
+	[SAX] = COL_WHITE,
+	[SHA] = COL_WHITE,
+	[SHX] = COL_WHITE,
+	[SHY] = COL_WHITE,
 	[LAX] = COL_WHITE,
-	[DCM] = COL_WHITE,
+	[DCP] = COL_WHITE,
 	[ARR] = COL_WHITE,
 	[XAA] = COL_WHITE,
-	[TOS] = COL_WHITE,
+	[SHS] = COL_WHITE,
 	[OAL] = COL_WHITE,
-	[SXA] = COL_WHITE,
+	[LAS] = COL_WHITE,
 	[SBX] = COL_WHITE,
-	[INS] = COL_WHITE,
-	[ALR] = COL_WHITE,
+	[ISC] = COL_WHITE,
+	[ASR] = COL_WHITE,
 };
 
 void	colour_instr(uint8_t opcode)
@@ -211,9 +211,9 @@ const char *get_instruct_str(enum instructions instr)
 		case (HLT):
 			return "HLT";
 		case (SKB):
-			return "SKB";
+			return "NOP";
 		case (SKW):
-			return "SKW";
+			return "NOP";
 		case (SLO):
 			return "SLO";
 		case (RLA):
@@ -222,35 +222,35 @@ const char *get_instruct_str(enum instructions instr)
 			return "SRE";
 		case (RRA):
 			return "RRA";
-		case (AXS):
-			return "AXS";
-		case (SOA):
-			return "SOA";
-		case (SOX):
-			return "SOX";
-		case (SOY):
-			return "SOY";
+		case (SAX):
+			return "SAX";
+		case (SHA):
+			return "SHA";
+		case (SHX):
+			return "SHX";
+		case (SHY):
+			return "SHY";
 		case (LAX):
 			return "LAX";
-		case (DCM):
-			return "DCM";
+		case (DCP):
+			return "DCP";
 		case (ARR):
 			return "ARR";
 		case (XAA):
 			return "XAA";
-		case (TOS):
-			return "TOS";
+		case (SHS):
+			return "SHS";
 		case (OAL):
 			return "OAL";
-		case (SXA):
-			return "SXA";
+		case (LAS):
+			return "LAS";
 		case (SBX):
 			return "SBX";
-		case (INS):
-			return "INS";
-		case (ALR):
-			return "ALR";
-		case (INSTRUCTIONS_MAX):
+		case (ISC):
+			return "ISC";
+		case (ASR):
+			return "ASR";
+		case (ISCTRUCTIONS_MAX):
 			return "INSTRUCTIONS_MAX";
 	}
 	return NULL;
@@ -444,9 +444,11 @@ void log_instr(int fd, t_cpu *cpu, const t_instruct *instr)
 		else
 			len += dprintf(fd, "   ");
 	}
-	len += dprintf(fd, "%s%s ", instr->instruction > NOP ? "*" : " ", get_instruct_str(instr->instruction));
+	len += dprintf(fd, "%s%s ", (instr->instruction >= NOP && cpu->memory[cpu->pc] != 0xEA) ? "*" : " ", get_instruct_str(instr->instruction));
 	len += print_operand_disassembly(fd, cpu, instr);
 	while (len < 48)
 		len += dprintf(fd, " ");
-	len += dprintf(fd, "A:%02X X:%02X Y:%02X P:%02X SP:%02X\n", cpu->a, cpu->x, cpu->y, cpu->status | 0x20, cpu->sp);
+	len += dprintf(fd, "A:%02X X:%02X Y:%02X P:%02X SP:%02X", cpu->a, cpu->x, cpu->y, cpu->status | 0x20, cpu->sp);
+	len += dprintf(fd, "  CYC:%lu", cpu->cycles);
+	dprintf(fd, "\n");
 }

@@ -45,6 +45,10 @@
 
 #define SIGN_BIT 128
 
+#define CYCLE_PAGECROSS 64
+#define CYCLE_BRANCHTAKEN 128
+#define CYCLE_MASK 0x0F
+
 #define SET_BIT(var, mask, expr) \
     ((var) = ((var) & ~(mask)) | ((!!(expr)) ? (mask) : 0))
 
@@ -140,21 +144,22 @@ enum instructions
 	RLA,
 	SRE,
 	RRA,
-	AXS,
-	SOA,
-	SOX,
-	SOY,
+	SAX,
+	SHA,
+	SHX,
+	SHY,
 	LAX,
-	DCM,
+	DCP,
 	ARR,
 	XAA,
-	TOS,
+	SHS,
 	OAL,
-	SXA,
+	LAS,
 	SBX,
-	INS,
-	ALR,
-	INSTRUCTIONS_MAX,
+	ISC,
+	ASR,
+	ANC,
+	ISCTRUCTIONS_MAX,
 };
 
 typedef struct t_opcode
@@ -178,6 +183,7 @@ typedef struct t_cpu
 	uint8_t		*memory;
 	size_t		memsize;
 	size_t		cycles;
+	uint8_t		cycle_events;
 	int			logfd;
 }	t_cpu;
 

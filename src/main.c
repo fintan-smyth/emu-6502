@@ -135,11 +135,11 @@ void	run_until_addr(t_cpu *cpu, uint16_t addr)
 	}
 }
 
-void	run_until_breakpoint(t_cpu *cpu, BSTSet_word *breakpoints)
+static inline void	run_until_breakpoint(t_cpu *cpu, BSTSet_word *breakpoints)
 {
 	uint16_t old_pc = 0xFFFF;
 	g_var = 0;
-	while (cpu->pc != old_pc && g_var != SIGINT)
+	while (cpu->pc != old_pc && g_var != SIGINT && cpu->cycles < 500000000)
 	{
 		old_pc = cpu->pc;
 		uint8_t opcode = read_byte(cpu, cpu->pc);
@@ -177,11 +177,12 @@ int	main(int argc, char **argv)
 
 
 	set_term_settings();
-	BSTSet_word breakpoints;
+	BSTSet_word breakpoints = {};
 	// bstset_word_insert(&breakpoints, 0x3373);
 	
 	cpu.status = FLAG_E | FLAG_I;
 	cpu.sp = 0xFD;
+	cpu.cycles = 7;
 	uint16_t addrbuf;
 	while (true)
 	{
