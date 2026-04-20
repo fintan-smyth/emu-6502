@@ -8,11 +8,23 @@ uint8_t	read_byte(t_cpu *cpu, size_t addr)
 {
 	return cpu->memory[addr];
 }
+
 uint16_t	read_word(t_cpu *cpu, size_t addr)
 {
 	uint16_t word = 0;
 	uint8_t lo = cpu->memory[addr];
 	uint8_t hi = cpu->memory[addr + 1];
+
+	word = (hi << 8) | lo;
+
+	return word;
+}
+
+uint16_t	read_word_zp(t_cpu *cpu, size_t addr)
+{
+	uint16_t word = 0;
+	uint8_t lo = cpu->memory[addr];
+	uint8_t hi = cpu->memory[(addr + 1) & 0xFF];
 
 	word = (hi << 8) | lo;
 
@@ -42,60 +54,61 @@ u_int16_t	handle_zeropage_y_indirect(t_cpu *cpu)
 	return addr;
 }
 
-void	get_addr(t_cpu *cpu, AddrMode mode)
+uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 {
+	uint16_t addrbus = 0x0;
 	uint16_t ptr;
-	cpu->addrbus = 0;
 	switch (mode) {
 		case (RELATIVE):
-			cpu->addrbus = cpu->pc + (int8_t)read_byte(cpu, cpu->pc + 1);
-			return;
+			addrbus = cpu->pc + (int8_t)read_byte(cpu, cpu->pc + 1);
+			break;
 		case (ZEROPAGE):
-			cpu->addrbus = read_byte(cpu, cpu->pc + 1);
-			return;
+			addrbus = read_byte(cpu, cpu->pc + 1);
+			break;
 		case (ZEROPAGE_X):
-			cpu->addrbus = read_byte(cpu, cpu->pc + 1);
-			cpu->addrbus = (cpu->addrbus + cpu->x) & 0xFF;
-			return;
+			addrbus = read_byte(cpu, cpu->pc + 1);
+			addrbus = (addrbus + cpu->x) & 0xFF;
+			break;
 		case (ZEROPAGE_Y):
-			cpu->addrbus = read_byte(cpu, cpu->pc + 1);
-			cpu->addrbus = (cpu->addrbus + cpu->y) & 0xFF;
-			return;
+			addrbus = read_byte(cpu, cpu->pc + 1);
+			addrbus = (addrbus + cpu->y) & 0xFF;
+			break;
 		case (ZEROPAGE_X_INDIRECT):
-			cpu->addrbus = read_byte(cpu, cpu->pc + 1);
-			cpu->addrbus = (cpu->addrbus + cpu->x) & 0xFF;
-			cpu->addrbus = read_word(cpu, cpu->addrbus);
-			return;
+			addrbus = read_byte(cpu, cpu->pc + 1);
+			addrbus = (addrbus + cpu->x) & 0xFF;
+			addrbus = read_word_zp(cpu, addrbus);
+			break;
 		case (ZEROPAGE_Y_INDIRECT):
-			// cpu->addrbus = handle_zeropage_y_indirect(cpu);
-			cpu->addrbus = read_byte(cpu, cpu->pc + 1);
-			cpu->addrbus = read_word(cpu, cpu->addrbus);
-			cpu->addrbus += cpu->y;
-			return;
+			// addrbus = handle_zeropage_y_indirect(cpu);
+			addrbus = read_byte(cpu, cpu->pc + 1);
+			addrbus = read_word_zp(cpu, addrbus);
+			addrbus += cpu->y;
+			break;
 		case (ABSOLUTE):
-			cpu->addrbus = read_word(cpu, cpu->pc + 1);
-			return;
+			addrbus = read_word(cpu, cpu->pc + 1);
+			break;
 		case (ABSOLUTE_X):
-			cpu->addrbus = read_word(cpu, cpu->pc + 1);
-			cpu->addrbus += cpu->x;
-			return;
+			addrbus = read_word(cpu, cpu->pc + 1);
+			addrbus += cpu->x;
+			break;
 		case (ABSOLUTE_Y):
-			cpu->addrbus = read_word(cpu, cpu->pc + 1);
-			cpu->addrbus += cpu->y;
-			return;
+			addrbus = read_word(cpu, cpu->pc + 1);
+			addrbus += cpu->y;
+			break;
 		case (ABSOLUTE_INDIRECT):
 			ptr = read_word(cpu, cpu->pc + 1);
 			if ((ptr & 0xFF) == 0xFF)
 			{
-				cpu->addrbus = read_byte(cpu, ptr);
-				cpu->addrbus |= read_byte(cpu, ptr & 0xFF00);
+				addrbus = read_byte(cpu, ptr);
+				addrbus |= read_byte(cpu, ptr & 0xFF00) << 8;
 			}
 			else
-				cpu->addrbus = read_word(cpu, ptr);
-			return;
+				addrbus = read_word(cpu, ptr);
+			break;
 		default:
-			return;
+			break;
 	}
+	return addrbus;
 }
 
 uint8_t	get_operand(t_cpu *cpu, AddrMode mode)
@@ -112,12 +125,29 @@ uint8_t	get_operand(t_cpu *cpu, AddrMode mode)
 			op = cpu->memory[cpu->pc + 1];
 			break;
 		default:
-			get_addr(cpu, mode);
-			op = read_byte(cpu, cpu->addrbus);
+			op = read_byte(cpu, get_addr(cpu, mode));
 			break;
 	}
 
 	return op;
+}
+
+uint8_t	*get_operand_addr(t_cpu *cpu, AddrMode mode)
+{
+	switch (mode) {
+		case (IMPLIED):
+			exit(3);
+			break;
+		case (ACCUMULATOR):
+			return &cpu->a;
+			break;
+		case (IMMEDIATE):
+			return &cpu->memory[cpu->pc + 1];
+			break;
+		default:
+			return &cpu->memory[get_addr(cpu, mode)];
+			break;
+	}
 }
 
 void	push_stack(t_cpu *cpu, uint8_t val)

@@ -1,5 +1,6 @@
 #include "emu6502.h"
 #include <ctype.h>
+#include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -11,6 +12,14 @@
 #include <termios.h>
 
 FS_DECLARE_BSTSET(uint16_t, word, NULL);
+
+
+sig_atomic_t g_var = {0x00};
+
+void sig_handler(int signo) {
+	if (signo == SIGINT)
+		g_var = SIGINT;
+}
 
 void	set_term_settings(void)
 {
@@ -63,8 +72,9 @@ void	load_program(t_cpu *cpu, const char *path)
 	read(fd, buf, size);
 	memcpy(&cpu->memory[0x8000], &buf[16], 0x4000);
 	memcpy(&cpu->memory[0xC000], &buf[16], 0x4000);
-	// read(fd, &cpu->memory[10], size);
 	free(buf);
+	// read(fd, cpu->memory, size);
+	// read(fd, &cpu->memory[10], size);
 	close(fd);
 }
 
@@ -128,21 +138,29 @@ void	run_until_addr(t_cpu *cpu, uint16_t addr)
 void	run_until_breakpoint(t_cpu *cpu, BSTSet_word *breakpoints)
 {
 	uint16_t old_pc = 0xFFFF;
-	while (cpu->pc != old_pc)
+	g_var = 0;
+	while (cpu->pc != old_pc && g_var != SIGINT)
 	{
 		old_pc = cpu->pc;
 		uint8_t opcode = read_byte(cpu, cpu->pc);
 		const t_instruct *instr = get_instruction(opcode);
+		// if (instr->instruction > NOP)
+		// 	break ;
 		execute_instr(cpu, instr);
+		// printf("\e[2J\e[H");
+		// print_debug_view(cpu, old_pc);
 		if (bstset_word_contains(breakpoints, cpu->pc))
 			break ;
 	}
+	g_var = 0;
 }
 
 int	main(int argc, char **argv)
 {
+	signal(SIGINT, sig_handler);
 	t_cpu	cpu = {0};
 	uint8_t	mem[0x10000];
+	cpu.logfd = open("output.log", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
 
 	cpu.memory = mem;
 	cpu.memsize = 0x10000;
@@ -154,16 +172,17 @@ int	main(int argc, char **argv)
 		return 1;
 
 	load_program(&cpu, argv[1]);
-	// uint16_t reset_vec = read_word(&cpu, 0xFFFC);
-	// printf("Reset vector: %04X\n", reset_vec);
-	// getchar();
 	cpu.pc = 0xC000;
+	// cpu.pc = 0x400;
 
 
 	set_term_settings();
 	BSTSet_word breakpoints;
 	// bstset_word_insert(&breakpoints, 0x3373);
-	// run_until_addr(&cpu, 0x3373);
+	
+	cpu.status = FLAG_E | FLAG_I;
+	cpu.sp = 0xFD;
+	uint16_t addrbuf;
 	while (true)
 	{
 		uint16_t orig_pc = cpu.pc;
@@ -194,8 +213,14 @@ int	main(int argc, char **argv)
 					bstset_word_insert(&breakpoints, read_word_input("\e[31;1mBREAK\e[m: "));
 					// _bstset_word_print(breakpoints.tree, 7);
 					// printf("contains 0x3373: %d\n", bstset_word_contains(&breakpoints, 0x3373));
-					getchar();
+					// getchar();
 					break;
+				case ('p'):
+					addrbuf = read_word_input("\e[32;1mPRINT\e[m: ");
+					printf("\n\e[32:1m%04X\e[m: 0x%02X\n", addrbuf, read_byte(&cpu, addrbuf));
+					printf("Press any key to continue...\n");
+					getchar();
+					continue ;
 				case ('c'):
 					run_until_breakpoint(&cpu, &breakpoints);
 					orig_pc = cpu.pc;
@@ -222,4 +247,6 @@ int	main(int argc, char **argv)
 END:
 	bstset_word_clear(&breakpoints, NULL);
 	reset_term_settings();
+	close(cpu.logfd);
+	printf("cycles: %ld\n", cpu.cycles);
 }

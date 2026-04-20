@@ -61,6 +61,27 @@ static const int instr_cols[INSTRUCTIONS_MAX] = {
 	[SED] = COL_WHITE,
 	[SEI] = COL_WHITE,
 	[NOP] = COL_WHITE,
+	[HLT] = COL_WHITE,
+	[SKB] = COL_WHITE,
+	[SKW] = COL_WHITE,
+	[SLO] = COL_WHITE,
+	[RLA] = COL_WHITE,
+	[SRE] = COL_WHITE,
+	[RRA] = COL_WHITE,
+	[AXS] = COL_WHITE,
+	[SOA] = COL_WHITE,
+	[SOX] = COL_WHITE,
+	[SOY] = COL_WHITE,
+	[LAX] = COL_WHITE,
+	[DCM] = COL_WHITE,
+	[ARR] = COL_WHITE,
+	[XAA] = COL_WHITE,
+	[TOS] = COL_WHITE,
+	[OAL] = COL_WHITE,
+	[SXA] = COL_WHITE,
+	[SBX] = COL_WHITE,
+	[INS] = COL_WHITE,
+	[ALR] = COL_WHITE,
 };
 
 void	colour_instr(uint8_t opcode)
@@ -187,6 +208,48 @@ const char *get_instruct_str(enum instructions instr)
 			return "SEI";
 		case (NOP):
 			return "NOP";
+		case (HLT):
+			return "HLT";
+		case (SKB):
+			return "SKB";
+		case (SKW):
+			return "SKW";
+		case (SLO):
+			return "SLO";
+		case (RLA):
+			return "RLA";
+		case (SRE):
+			return "SRE";
+		case (RRA):
+			return "RRA";
+		case (AXS):
+			return "AXS";
+		case (SOA):
+			return "SOA";
+		case (SOX):
+			return "SOX";
+		case (SOY):
+			return "SOY";
+		case (LAX):
+			return "LAX";
+		case (DCM):
+			return "DCM";
+		case (ARR):
+			return "ARR";
+		case (XAA):
+			return "XAA";
+		case (TOS):
+			return "TOS";
+		case (OAL):
+			return "OAL";
+		case (SXA):
+			return "SXA";
+		case (SBX):
+			return "SBX";
+		case (INS):
+			return "INS";
+		case (ALR):
+			return "ALR";
 		case (INSTRUCTIONS_MAX):
 			return "INSTRUCTIONS_MAX";
 	}
@@ -224,6 +287,68 @@ const char *get_addrmode_str(AddrMode mode)
 			return "ABSOLUTE_INDIRECT";
 	}
 	return NULL;
+}
+
+int print_operand_disassembly(int fd, t_cpu *cpu, const t_instruct *instr)
+{
+	switch (instr->addrmode) {
+		case (IMPLIED):
+			return 0;
+		case (ACCUMULATOR):
+			return dprintf(fd, "A");
+		case (IMMEDIATE):
+			return dprintf(fd, "#$%02X", get_operand(cpu, instr->addrmode));
+		case (RELATIVE):
+			return dprintf(fd, "$%04X", get_addr(cpu, instr->addrmode) + instr->n_bytes);
+		case (ZEROPAGE):
+			return dprintf(fd, "$%02X = %02X", get_addr(cpu, instr->addrmode), get_operand(cpu, instr->addrmode));
+		case (ZEROPAGE_X):
+			return dprintf(fd, "$%02X,X @ %02X = %02X",
+				  read_byte(cpu, cpu->pc + 1),
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
+				);
+		case (ZEROPAGE_Y):
+			return dprintf(fd, "$%02X,Y @ %02X = %02X",
+				  read_byte(cpu, cpu->pc + 1),
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
+				);
+		case (ZEROPAGE_X_INDIRECT):
+			return dprintf(fd, "($%02X,X) @ %02X = %04X = %02X",
+				  read_byte(cpu, cpu->pc + 1),
+				  (cpu->x + read_byte(cpu, cpu->pc + 1)) & 0xFF,
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
+				);
+		case (ZEROPAGE_Y_INDIRECT):
+			return dprintf(fd, "($%02X),Y = %04X @ %04X = %02X",
+				  read_byte(cpu, cpu->pc + 1),
+				  read_word_zp(cpu, read_byte(cpu, cpu->pc + 1)),
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
+				);
+		case (ABSOLUTE):
+			if (instr->instruction == JMP || instr->instruction == JSR)
+				return dprintf(fd, "$%04X", get_addr(cpu, instr->addrmode));
+			else
+				return dprintf(fd, "$%04X = %02X", get_addr(cpu, instr->addrmode), get_operand(cpu, instr->addrmode));
+		case (ABSOLUTE_X):
+			return dprintf(fd, "$%04X,X @ %04X = %02X",
+				  read_word(cpu, cpu->pc + 1),
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
+				);
+		case (ABSOLUTE_Y):
+			return dprintf(fd, "$%04X,Y @ %04X = %02X",
+				  read_word(cpu, cpu->pc + 1),
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
+				);
+		case (ABSOLUTE_INDIRECT):
+			return dprintf(fd, "($%04X) = %04X", read_word(cpu, cpu->pc + 1), get_addr(cpu, instr->addrmode));
+	}
+	return 0;
 }
 
 void	print_instr(uint8_t *mem, uint16_t addr)
@@ -306,4 +431,22 @@ void print_debug_view(t_cpu *cpu, uint16_t pc)
 	print_registers(cpu);
 	print_stack(cpu);
 	print_zeropage(cpu);
+}
+
+void log_instr(int fd, t_cpu *cpu, const t_instruct *instr)
+{
+	int len = 0;
+	len += dprintf(fd, "%04X  ", cpu->pc);
+	for (int i = 0; i < 3; i++)
+	{
+		if (i < instr->n_bytes)
+			len += dprintf(fd, "%02X ", read_byte(cpu, cpu->pc + i));
+		else
+			len += dprintf(fd, "   ");
+	}
+	len += dprintf(fd, "%s%s ", instr->instruction > NOP ? "*" : " ", get_instruct_str(instr->instruction));
+	len += print_operand_disassembly(fd, cpu, instr);
+	while (len < 48)
+		len += dprintf(fd, " ");
+	len += dprintf(fd, "A:%02X X:%02X Y:%02X P:%02X SP:%02X\n", cpu->a, cpu->x, cpu->y, cpu->status | 0x20, cpu->sp);
 }
