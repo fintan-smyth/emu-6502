@@ -1,4 +1,5 @@
 #include "emu6502.h"
+#include "nes.h"
 #include <ctype.h>
 #include <signal.h>
 #include <stddef.h>
@@ -68,12 +69,12 @@ void	load_program(t_cpu *cpu, const char *path)
 		return ;
 
 	int fd = open(path, O_RDONLY);
-	uint8_t *buf = malloc(size);
-	read(fd, buf, size);
-	memcpy(&cpu->memory[0x8000], &buf[16], 0x4000);
-	memcpy(&cpu->memory[0xC000], &buf[16], 0x4000);
-	free(buf);
-	// read(fd, cpu->memory, size);
+	// uint8_t *buf = malloc(size);
+	// read(fd, buf, size);
+	// memcpy(&cpu->memory[0x8000], &buf[16], 0x4000);
+	// memcpy(&cpu->memory[0xC000], &buf[16], 0x4000);
+	// free(buf);
+	read(fd, cpu->memory, size);
 	// read(fd, &cpu->memory[10], size);
 	close(fd);
 }
@@ -158,57 +159,62 @@ static inline void	run_until_breakpoint(t_cpu *cpu, BSTSet_word *breakpoints)
 int	main(int argc, char **argv)
 {
 	signal(SIGINT, sig_handler);
-	t_cpu	cpu = {0};
+	t_nes nes = {};
 	uint8_t	mem[0x10000];
-	cpu.logfd = open("output.log", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
+	nes.cpu.logfd = open("output.log", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
 
-	cpu.memory = mem;
-	cpu.memsize = 0x10000;
-	cpu.sp = 0xFF;
+	nes.cpu.memory = mem;
+	nes.cpu.memsize = 0x10000;
+	nes.cpu.sp = 0xFF;
 
 	printf("mem: %ld\n", sizeof(mem));
 
 	if (argc > 2)
 		return 1;
 
-	load_program(&cpu, argv[1]);
-	cpu.pc = 0xC000;
-	// cpu.pc = 0x400;
+	// load_program(&nes.cpu, argv[1]);
+	// setup_default_pagetable(&nes.cpu);
+	// t_cart *cart = read_nes(argv[1]);
+	// printf("cart: %p\n", cart);
+	// exit(1);
+	// nes.cpu.pc = 0x400;
 
+	nes_load_cartridge(&nes, read_nes(argv[1]));
+	nes.cpu.pc = 0xC000;
 
 	set_term_settings();
 	BSTSet_word breakpoints = {};
 	// bstset_word_insert(&breakpoints, 0x3373);
 	
-	cpu.status = FLAG_E | FLAG_I;
-	cpu.sp = 0xFD;
-	cpu.cycles = 7;
+	nes.cpu.status = FLAG_E | FLAG_I;
+	nes.cpu.sp = 0xFD;
+	nes.cpu.cycles = 7;
 	uint16_t addrbuf;
 	while (true)
 	{
-		uint16_t orig_pc = cpu.pc;
+		uint16_t orig_pc = nes.cpu.pc;
 		char c = 0;
 		while (c != '\n' && c != 'n')
 		{
 			printf("\e[2J\e[H\e[32;1m<<< FETCH <<<\e[m\n");
 			printf("-------------\n");
-			print_debug_view(&cpu, orig_pc);
+			print_debug_view(&nes.cpu, orig_pc);
 			c = tolower(getchar());
 			switch (c) {
 				case ('y'):
-					cpu.y = read_byte_input("Y = ");
+					nes.cpu.y = read_byte_input("Y = ");
 					break;
 				case ('x'):
-					cpu.x = read_byte_input("X = ");
+					nes.cpu.x = read_byte_input("X = ");
 					break;
 				case ('a'):
-					cpu.a = read_byte_input("A = ");
+					nes.cpu.a = read_byte_input("A = ");
 					break;
 				// case ('p'):
-				// 	cpu.pc = read_byte_input("PC = ");
+				// 	nes.cpu.pc = read_byte_input("PC = ");
 				// 	break;
 				case ('s'):
-					cpu.sp = read_byte_input("SP = ");
+					nes.cpu.sp = read_byte_input("SP = ");
 					break;
 				case ('b'):
 					bstset_word_insert(&breakpoints, read_word_input("\e[31;1mBREAK\e[m: "));
@@ -218,13 +224,13 @@ int	main(int argc, char **argv)
 					break;
 				case ('p'):
 					addrbuf = read_word_input("\e[32;1mPRINT\e[m: ");
-					printf("\n\e[32:1m%04X\e[m: 0x%02X\n", addrbuf, read_byte(&cpu, addrbuf));
+					printf("\n\e[32:1m%04X\e[m: 0x%02X\n", addrbuf, read_byte(&nes.cpu, addrbuf));
 					printf("Press any key to continue...\n");
 					getchar();
 					continue ;
 				case ('c'):
-					run_until_breakpoint(&cpu, &breakpoints);
-					orig_pc = cpu.pc;
+					run_until_breakpoint(&nes.cpu, &breakpoints);
+					orig_pc = nes.cpu.pc;
 					continue ;
 				case ('q'):
 					goto END;
@@ -233,21 +239,21 @@ int	main(int argc, char **argv)
 			}
 		}
 
-		uint8_t opcode = read_byte(&cpu, cpu.pc);
+		uint8_t opcode = read_byte(&nes.cpu, nes.cpu.pc);
 		const t_instruct *instr = get_instruction(opcode);
-		execute_instr(&cpu, instr);
+		execute_instr(&nes.cpu, instr);
 		printf("\e[2J\e[H\e[31;1m>>> EXECUTE >>>\e[m\n");
 		printf("-------------\n");
-		print_debug_view(&cpu, orig_pc);
+		print_debug_view(&nes.cpu, orig_pc);
 		getchar();
-		// cpu.pc += instr->n_bytes;
-		// if (cpu.pc == orig_pc)
+		// nes.cpu.pc += instr->n_bytes;
+		// if (nes.cpu.pc == orig_pc)
 		// 	break;
 	}
-	// printf("PC: %04X\n", cpu.pc);
+	// printf("PC: %04X\n", nes.cpu.pc);
 END:
 	bstset_word_clear(&breakpoints, NULL);
 	reset_term_settings();
-	close(cpu.logfd);
-	printf("cycles: %ld\n", cpu.cycles);
+	close(nes.cpu.logfd);
+	printf("cycles: %ld\n", nes.cpu.cycles);
 }

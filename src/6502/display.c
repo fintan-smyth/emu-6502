@@ -351,14 +351,15 @@ int print_operand_disassembly(int fd, t_cpu *cpu, const t_instruct *instr)
 	return 0;
 }
 
-void	print_instr(uint8_t *mem, uint16_t addr)
+void	print_instr(t_cpu *cpu, uint16_t addr)
 {
-	const t_instruct *instr = get_instruction(mem[addr]);
+	uint8_t op = read_byte(cpu, addr);
+	const t_instruct *instr = get_instruction(op);
 
-	colour_instr(mem[addr]);
+	colour_instr(op);
 	printf("%s\e[m : ", get_instruct_str(instr->instruction));
 	for (int i = 0; i < instr->n_bytes; i++)
-	  printf("\e[34;1m%02X ", mem[addr + i]);
+	  printf("\e[34;1m%02X ", read_byte(cpu, addr + i));
 	printf("\t\e[32;1m%s\e[m\n", get_addrmode_str(instr->addrmode));
 }
 
@@ -426,7 +427,7 @@ void	print_zeropage(t_cpu *cpu)
 
 void print_debug_view(t_cpu *cpu, uint16_t pc)
 {
-	print_instr(cpu->memory, pc);
+	print_instr(cpu, pc);
 	printf("\n");
 	print_registers(cpu);
 	print_stack(cpu);
@@ -444,7 +445,7 @@ void log_instr(int fd, t_cpu *cpu, const t_instruct *instr)
 		else
 			len += dprintf(fd, "   ");
 	}
-	len += dprintf(fd, "%s%s ", (instr->instruction >= NOP && cpu->memory[cpu->pc] != 0xEA) ? "*" : " ", get_instruct_str(instr->instruction));
+	len += dprintf(fd, "%s%s ", (instr->instruction >= NOP && read_byte(cpu, cpu->pc) != 0xEA) ? "*" : " ", get_instruct_str(instr->instruction));
 	len += print_operand_disassembly(fd, cpu, instr);
 	while (len < 48)
 		len += dprintf(fd, " ");

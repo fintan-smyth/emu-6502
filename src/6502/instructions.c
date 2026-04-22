@@ -267,7 +267,7 @@ const t_instruct *get_instruction(uint8_t opcode)
 	return &codes[opcode];
 }
 
-void exec_LDA_core(t_cpu *cpu, uint8_t op)
+static inline void exec_LDA_core(t_cpu *cpu, uint8_t op)
 {
 	cpu->a = op;
 
@@ -275,13 +275,13 @@ void exec_LDA_core(t_cpu *cpu, uint8_t op)
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 }
 
-void exec_LDA(t_cpu *cpu, const t_instruct *instr)
+static void exec_LDA(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_LDA_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_LDX_core(t_cpu *cpu, uint8_t op)
+static inline void exec_LDX_core(t_cpu *cpu, uint8_t op)
 {
 	cpu->x = op;
 
@@ -289,13 +289,13 @@ void exec_LDX_core(t_cpu *cpu, uint8_t op)
 	SET_BIT(cpu->status, FLAG_Z, cpu->x == 0);
 }
 
-void exec_LDX(t_cpu *cpu, const t_instruct *instr)
+static void exec_LDX(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_LDX_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_LDY_core(t_cpu *cpu, uint8_t op)
+static inline void exec_LDY_core(t_cpu *cpu, uint8_t op)
 {
 	cpu->y = op;
 
@@ -303,34 +303,34 @@ void exec_LDY_core(t_cpu *cpu, uint8_t op)
 	SET_BIT(cpu->status, FLAG_Z, cpu->y == 0);
 }
 
-void exec_LDY(t_cpu *cpu, const t_instruct *instr)
+static void exec_LDY(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_LDY_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_STA(t_cpu *cpu, const t_instruct *instr)
+static void exec_STA(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	write_byte(cpu, cpu->addrbus, cpu->a);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_STX(t_cpu *cpu, const t_instruct *instr)
+static void exec_STX(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	write_byte(cpu, cpu->addrbus, cpu->x);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_STY(t_cpu *cpu, const t_instruct *instr)
+static void exec_STY(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	write_byte(cpu, cpu->addrbus, cpu->y);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_TAX(t_cpu *cpu, const t_instruct *instr)
+static void exec_TAX(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->x = cpu->a;
 
@@ -339,7 +339,7 @@ void exec_TAX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_TAY(t_cpu *cpu, const t_instruct *instr)
+static void exec_TAY(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->y = cpu->a;
 
@@ -348,7 +348,7 @@ void exec_TAY(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_TSX(t_cpu *cpu, const t_instruct *instr)
+static void exec_TSX(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->x = cpu->sp;
 
@@ -357,7 +357,7 @@ void exec_TSX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_TXA(t_cpu *cpu, const t_instruct *instr)
+static void exec_TXA(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->a = cpu->x;
 
@@ -366,13 +366,13 @@ void exec_TXA(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_TXS(t_cpu *cpu, const t_instruct *instr)
+static void exec_TXS(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->sp = cpu->x;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_TYA(t_cpu *cpu, const t_instruct *instr)
+static void exec_TYA(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->a = cpu->y;
 
@@ -381,19 +381,19 @@ void exec_TYA(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_PHA(t_cpu *cpu, const t_instruct *instr)
+static void exec_PHA(t_cpu *cpu, const t_instruct *instr)
 {
 	push_stack(cpu, cpu->a);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_PHP(t_cpu *cpu, const t_instruct *instr)
+static void exec_PHP(t_cpu *cpu, const t_instruct *instr)
 {
 	push_stack(cpu, cpu->status | FLAG_E | FLAG_B);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_PLA(t_cpu *cpu, const t_instruct *instr)
+static void exec_PLA(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->a = pop_stack(cpu);
 	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);
@@ -401,53 +401,64 @@ void exec_PLA(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_PLP(t_cpu *cpu, const t_instruct *instr)
+static void exec_PLP(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status = (pop_stack(cpu) | FLAG_E) & ~FLAG_B;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ASL_core(t_cpu *cpu, uint8_t *op_addr)
+static inline uint8_t exec_ASL_core(t_cpu *cpu, uint8_t op)
 {
-	uint8_t op = *op_addr;
-
 	bool to_carry = (op & BIT_7);
 	SET_BIT(cpu->status, FLAG_C, to_carry);
 
 	op <<= 1;
 	SET_BIT(cpu->status, FLAG_N, op & SIGN_BIT);
 	SET_BIT(cpu->status, FLAG_Z, op == 0);
-	*op_addr = op;
+
+	return op;
 }
 
-void exec_ASL(t_cpu *cpu, const t_instruct *instr)
+static void exec_ASL(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_ASL_core(cpu, get_operand_addr(cpu, instr->addrmode));
+	if (instr->addrmode != ACCUMULATOR)
+	{
+		uint16_t addr = get_addr(cpu, instr->addrmode);
+		uint8_t result = exec_ASL_core(cpu, read_byte(cpu, addr));
+		write_byte(cpu, addr, result);
+	}
+	else
+		cpu->a = exec_ASL_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_LSR_core(t_cpu *cpu, uint8_t *op_addr)
+static inline uint8_t exec_LSR_core(t_cpu *cpu, uint8_t op)
 {
-	uint8_t op = *op_addr;
 	bool to_carry = (op & BIT_0);
 	SET_BIT(cpu->status, FLAG_C, to_carry);
 
 	op >>= 1;
 	SET_BIT(cpu->status, FLAG_N, op & SIGN_BIT);
 	SET_BIT(cpu->status, FLAG_Z, op == 0);
-	*op_addr = op;
+
+	return op;
 }
 
-void exec_LSR(t_cpu *cpu, const t_instruct *instr)
+static void exec_LSR(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_LSR_core(cpu, get_operand_addr(cpu, instr->addrmode));
+	if (instr->addrmode != ACCUMULATOR)
+	{
+		uint16_t addr = get_addr(cpu, instr->addrmode);
+		uint8_t result = exec_LSR_core(cpu, read_byte(cpu, addr));
+		write_byte(cpu, addr, result);
+	}
+	else
+		cpu->a = exec_LSR_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ROL_core(t_cpu *cpu, uint8_t *op_addr)
+static inline uint8_t exec_ROL_core(t_cpu *cpu, uint8_t op)
 {
-	uint8_t op = *op_addr;
-
 	bool to_carry = (op & BIT_7);
 	op <<= 1;
 	SET_BIT(op, BIT_0, cpu->status & FLAG_C);
@@ -456,19 +467,24 @@ void exec_ROL_core(t_cpu *cpu, uint8_t *op_addr)
 	SET_BIT(cpu->status, FLAG_N, op & SIGN_BIT);
 	SET_BIT(cpu->status, FLAG_Z, op == 0);
 
-	*op_addr = op;
+	return op;
 }
 
-void exec_ROL(t_cpu *cpu, const t_instruct *instr)
+static void exec_ROL(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_ROL_core(cpu, get_operand_addr(cpu, instr->addrmode));
+	if (instr->addrmode != ACCUMULATOR)
+	{
+		uint16_t addr = get_addr(cpu, instr->addrmode);
+		uint8_t result = exec_ROL_core(cpu, read_byte(cpu, addr));
+		write_byte(cpu, addr, result);
+	}
+	else
+		cpu->a = exec_ROL_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ROR_core(t_cpu *cpu, uint8_t *op_addr)
+static inline uint8_t exec_ROR_core(t_cpu *cpu, uint8_t op)
 {
-	uint8_t op = *op_addr;
-
 	bool to_carry = (op & BIT_0);
 	op >>= 1;
 	SET_BIT(op, BIT_7, cpu->status & FLAG_C);
@@ -477,16 +493,23 @@ void exec_ROR_core(t_cpu *cpu, uint8_t *op_addr)
 	SET_BIT(cpu->status, FLAG_N, op & SIGN_BIT);
 	SET_BIT(cpu->status, FLAG_Z, op == 0);
 
-	*op_addr = op;
+	return op;
 }
 
-void exec_ROR(t_cpu *cpu, const t_instruct *instr)
+static void exec_ROR(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_ROR_core(cpu, get_operand_addr(cpu, instr->addrmode));
+	if (instr->addrmode != ACCUMULATOR)
+	{
+		uint16_t addr = get_addr(cpu, instr->addrmode);
+		uint8_t result = exec_ROR_core(cpu, read_byte(cpu, addr));
+		write_byte(cpu, addr, result);
+	}
+	else
+		cpu->a = exec_ROR_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_AND_core(t_cpu *cpu, uint8_t op)
+static inline void exec_AND_core(t_cpu *cpu, uint8_t op)
 {
 	cpu->a &= op;
 
@@ -494,13 +517,13 @@ void exec_AND_core(t_cpu *cpu, uint8_t op)
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 }
 
-void exec_AND(t_cpu *cpu, const t_instruct *instr)
+static void exec_AND(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_AND_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_BIT_core(t_cpu *cpu, uint8_t op)
+static inline void exec_BIT_core(t_cpu *cpu, uint8_t op)
 {
 	uint8_t result = cpu->a & op;
 	SET_BIT(cpu->status, FLAG_N, op & SIGN_BIT);
@@ -508,13 +531,13 @@ void exec_BIT_core(t_cpu *cpu, uint8_t op)
 	SET_BIT(cpu->status, FLAG_Z, result == 0);
 }
 
-void exec_BIT(t_cpu *cpu, const t_instruct *instr)
+static void exec_BIT(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_BIT_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_EOR_core(t_cpu *cpu, uint8_t op)
+static inline void exec_EOR_core(t_cpu *cpu, uint8_t op)
 {
 	cpu->a ^= op;
 
@@ -522,13 +545,13 @@ void exec_EOR_core(t_cpu *cpu, uint8_t op)
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 }
 
-void exec_EOR(t_cpu *cpu, const t_instruct *instr)
+static void exec_EOR(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_EOR_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ORA_core(t_cpu *cpu, uint8_t op)
+static inline void exec_ORA_core(t_cpu *cpu, uint8_t op)
 {
 	cpu->a |= op;
 
@@ -536,13 +559,13 @@ void exec_ORA_core(t_cpu *cpu, uint8_t op)
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 }
 
-void exec_ORA(t_cpu *cpu, const t_instruct *instr)
+static void exec_ORA(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_ORA_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ADC_core(t_cpu *cpu, uint8_t op)
+static inline void exec_ADC_core(t_cpu *cpu, uint8_t op)
 {
 	uint16_t sum = cpu->a + op + (cpu->status & FLAG_C);
 
@@ -567,13 +590,13 @@ void exec_ADC_core(t_cpu *cpu, uint8_t op)
 	cpu->a = (uint8_t)sum;
 }
 
-void exec_ADC(t_cpu *cpu, const t_instruct *instr)
+static void exec_ADC(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_ADC_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-uint8_t exec_compare_core(t_cpu *cpu, uint8_t reg, uint8_t op)
+static inline uint8_t exec_compare_core(t_cpu *cpu, uint8_t reg, uint8_t op)
 {
 	uint8_t result = reg - op;
 	SET_BIT(cpu->status, FLAG_C, op <= reg);
@@ -582,25 +605,25 @@ uint8_t exec_compare_core(t_cpu *cpu, uint8_t reg, uint8_t op)
 	return result;
 }
 
-void exec_CMP(t_cpu *cpu, const t_instruct *instr)
+static void exec_CMP(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_compare_core(cpu, cpu->a, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_CPX(t_cpu *cpu, const t_instruct *instr)
+static void exec_CPX(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_compare_core(cpu, cpu->x, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_CPY(t_cpu *cpu, const t_instruct *instr)
+static void exec_CPY(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_compare_core(cpu, cpu->y, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SBC_core(t_cpu *cpu, uint8_t op)
+static inline void exec_SBC_core(t_cpu *cpu, uint8_t op)
 {
 	uint8_t unflipped = op;
 	op = ~op;
@@ -627,69 +650,69 @@ void exec_SBC_core(t_cpu *cpu, uint8_t op)
 	cpu->a = (uint8_t)sum;
 }
 
-void exec_SBC(t_cpu *cpu, const t_instruct *instr)
+static void exec_SBC(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_SBC_core(cpu, get_operand(cpu, instr->addrmode));
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_decrement_core(t_cpu *cpu, uint8_t *op_addr)
+static inline uint8_t exec_decrement_core(t_cpu *cpu, uint8_t op)
 {
-	uint8_t op = *op_addr;
-
 	op--;
 	SET_BIT(cpu->status, FLAG_N, op & SIGN_BIT);
 	SET_BIT(cpu->status, FLAG_Z, op == 0);
-	*op_addr = op;
+	return op;
 }
 
-void exec_DEC(t_cpu *cpu, const t_instruct *instr)
+static void exec_DEC(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_decrement_core(cpu, get_operand_addr(cpu, instr->addrmode));
+	uint16_t addr = get_addr(cpu, instr->addrmode);
+	uint8_t result = exec_decrement_core(cpu, read_byte(cpu, addr));
+	write_byte(cpu, addr, result);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_DEX(t_cpu *cpu, const t_instruct *instr)
+static void exec_DEX(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_decrement_core(cpu, &cpu->x);
+	cpu->x = exec_decrement_core(cpu, cpu->x);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_DEY(t_cpu *cpu, const t_instruct *instr)
+static void exec_DEY(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_decrement_core(cpu, &cpu->y);
+	cpu->y = exec_decrement_core(cpu, cpu->y);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_increment_core(t_cpu *cpu, uint8_t *op_addr)
+static inline uint8_t exec_increment_core(t_cpu *cpu, uint8_t op)
 {
-	uint8_t op = *op_addr;
-
 	op++;
 	SET_BIT(cpu->status, FLAG_N, op & SIGN_BIT);
 	SET_BIT(cpu->status, FLAG_Z, op == 0);
-	*op_addr = op;
+	return op;
 }
 
-void exec_INC(t_cpu *cpu, const t_instruct *instr)
+static void exec_INC(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_increment_core(cpu, get_operand_addr(cpu, instr->addrmode));
+	uint16_t addr = get_addr(cpu, instr->addrmode);
+	uint8_t result = exec_increment_core(cpu, read_byte(cpu, addr));
+	write_byte(cpu, addr, result);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_INX(t_cpu *cpu, const t_instruct *instr)
+static void exec_INX(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_increment_core(cpu, &cpu->x);
+	cpu->x = exec_increment_core(cpu, cpu->x);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_INY(t_cpu *cpu, const t_instruct *instr)
+static void exec_INY(t_cpu *cpu, const t_instruct *instr)
 {
-	exec_increment_core(cpu, &cpu->y);
+	cpu->y = exec_increment_core(cpu, cpu->y);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_BRK(t_cpu *cpu, const t_instruct *instr)
+static void exec_BRK(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->pc += 2;
 	push_stack(cpu, (cpu->pc >> 8) & 0xFF);
@@ -700,13 +723,13 @@ void exec_BRK(t_cpu *cpu, const t_instruct *instr)
 	(void)instr;
 }
 
-void exec_JMP(t_cpu *cpu, const t_instruct *instr)
+static void exec_JMP(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	cpu->pc = cpu->addrbus;
 }
 
-void exec_JSR(t_cpu *cpu, const t_instruct *instr)
+static void exec_JSR(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 
@@ -716,7 +739,7 @@ void exec_JSR(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc = cpu->addrbus;
 }
 
-void exec_RTI(t_cpu *cpu, const t_instruct *instr)
+static void exec_RTI(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status = (pop_stack(cpu) | FLAG_E) & ~FLAG_B;
 	cpu->pc = pop_stack(cpu);
@@ -724,7 +747,7 @@ void exec_RTI(t_cpu *cpu, const t_instruct *instr)
 	(void)instr;
 }
 
-void exec_RTS(t_cpu *cpu, const t_instruct *instr)
+static void exec_RTS(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->pc = pop_stack(cpu);
 	cpu->pc |= (pop_stack(cpu) << 8);
@@ -732,167 +755,172 @@ void exec_RTS(t_cpu *cpu, const t_instruct *instr)
 	(void)instr;
 }
 
-void exec_branch_core(t_cpu *cpu, const t_instruct *instr, bool branch)
+static inline void exec_branch_core(t_cpu *cpu, const t_instruct *instr, bool branch)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 
 	if (branch)
 	{
 		cpu->cycle_events |= CYCLE_BRANCHTAKEN;
-		print_instr(cpu->memory, cpu->pc);
-		printf("%04X -> %04X\n", cpu->pc, cpu->addrbus + instr->n_bytes);
-		if (cpu->cycle_events & CYCLE_PAGECROSS)
-			printf("PAGE CROSSED\n");
-		printf("----------\n");
+		// print_instr(cpu->memory, cpu->pc);
+		// printf("%04X -> %04X\n", cpu->pc, cpu->addrbus + instr->n_bytes);
+		// if (cpu->cycle_events & CYCLE_PAGECROSS)
+		// 	printf("PAGE CROSSED\n");
+		// printf("----------\n");
 		cpu->pc = cpu->addrbus;
 	}
 
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_BCC(t_cpu *cpu, const t_instruct *instr)
+static void exec_BCC(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_branch_core(cpu, instr, !(cpu->status & FLAG_C));
 }
 
-void exec_BCS(t_cpu *cpu, const t_instruct *instr)
+static void exec_BCS(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_branch_core(cpu, instr, (cpu->status & FLAG_C));
 }
 
-void exec_BEQ(t_cpu *cpu, const t_instruct *instr)
+static void exec_BEQ(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_branch_core(cpu, instr, (cpu->status & FLAG_Z));
 }
 
-void exec_BMI(t_cpu *cpu, const t_instruct *instr)
+static void exec_BMI(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_branch_core(cpu, instr, (cpu->status & FLAG_N));
 }
 
-void exec_BNE(t_cpu *cpu, const t_instruct *instr)
+static void exec_BNE(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_branch_core(cpu, instr, !(cpu->status & FLAG_Z));
 }
 
-void exec_BPL(t_cpu *cpu, const t_instruct *instr)
+static void exec_BPL(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_branch_core(cpu, instr, !(cpu->status & FLAG_N));
 }
 
-void exec_BVC(t_cpu *cpu, const t_instruct *instr)
+static void exec_BVC(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_branch_core(cpu, instr, !(cpu->status & FLAG_V));
 }
 
-void exec_BVS(t_cpu *cpu, const t_instruct *instr)
+static void exec_BVS(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_branch_core(cpu, instr, (cpu->status & FLAG_V));
 }
 
-void exec_CLC(t_cpu *cpu, const t_instruct *instr)
+static void exec_CLC(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status &= ~FLAG_C;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_CLD(t_cpu *cpu, const t_instruct *instr)
+static void exec_CLD(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status &= ~FLAG_D;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_CLI(t_cpu *cpu, const t_instruct *instr)
+static void exec_CLI(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status &= ~FLAG_I;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_CLV(t_cpu *cpu, const t_instruct *instr)
+static void exec_CLV(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status &= ~FLAG_V;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SEC(t_cpu *cpu, const t_instruct *instr)
+static void exec_SEC(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status |= FLAG_C;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SED(t_cpu *cpu, const t_instruct *instr)
+static void exec_SED(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status |= FLAG_D;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SEI(t_cpu *cpu, const t_instruct *instr)
+static void exec_SEI(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->status |= FLAG_I;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_NOP(t_cpu *cpu, const t_instruct *instr)
+static void exec_NOP(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->pc += instr->n_bytes;
 	return ;
 }
 
-void exec_HLT(t_cpu *cpu, const t_instruct *instr)
+static void exec_HLT(t_cpu *cpu, const t_instruct *instr)
 {
 	printf("HLT encountered: exiting...\n");
+	dprintf(cpu->logfd, "lookup table size: %lu\n", sizeof(codes));
 	(void)cpu;
 	(void)instr;
 	exit(4);
 }
 
-void exec_SKB(t_cpu *cpu, const t_instruct *instr)
+static void exec_SKB(t_cpu *cpu, const t_instruct *instr)
 {
 	(void)get_operand(cpu, instr->addrmode);
 	cpu->pc += instr->n_bytes;
 	return ;
 }
 
-void exec_SKW(t_cpu *cpu, const t_instruct *instr)
+static void exec_SKW(t_cpu *cpu, const t_instruct *instr)
 {
 	(void)get_operand(cpu, instr->addrmode);
 	cpu->pc += instr->n_bytes;
 	return ;
 }
 
-void exec_SLO(t_cpu *cpu, const t_instruct *instr)
+static void exec_SLO(t_cpu *cpu, const t_instruct *instr)
 {
-	uint8_t *op_addr = get_operand_addr(cpu, instr->addrmode);
-	exec_ASL_core(cpu, op_addr);
-	exec_ORA_core(cpu, *op_addr);
+	uint16_t addr = get_addr(cpu, instr->addrmode);
+	uint8_t result = exec_ASL_core(cpu, read_byte(cpu, addr));
+	write_byte(cpu, addr, result);
+	exec_ORA_core(cpu, result);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_RLA(t_cpu *cpu, const t_instruct *instr)
+static void exec_RLA(t_cpu *cpu, const t_instruct *instr)
 {
-	uint8_t *op_addr = get_operand_addr(cpu, instr->addrmode);
-	exec_ROL_core(cpu, op_addr);
-	exec_AND_core(cpu, *op_addr);
+	uint16_t addr = get_addr(cpu, instr->addrmode);
+	uint8_t result = exec_ROL_core(cpu, read_byte(cpu, addr));
+	write_byte(cpu, addr, result);
+	exec_AND_core(cpu, result);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SRE(t_cpu *cpu, const t_instruct *instr)
+static void exec_SRE(t_cpu *cpu, const t_instruct *instr)
 {
-	uint8_t *op_addr = get_operand_addr(cpu, instr->addrmode);
-	exec_LSR_core(cpu, op_addr);
-	exec_EOR_core(cpu, *op_addr);
+	uint16_t addr = get_addr(cpu, instr->addrmode);
+	uint8_t result = exec_LSR_core(cpu, read_byte(cpu, addr));
+	write_byte(cpu, addr, result);
+	exec_EOR_core(cpu, result);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_RRA(t_cpu *cpu, const t_instruct *instr)
+static void exec_RRA(t_cpu *cpu, const t_instruct *instr)
 {
-	uint8_t *op_addr = get_operand_addr(cpu, instr->addrmode);
-	exec_ROR_core(cpu, op_addr);
-	exec_ADC_core(cpu, *op_addr);
+	uint16_t addr = get_addr(cpu, instr->addrmode);
+	uint8_t result = exec_ROR_core(cpu, read_byte(cpu, addr));
+	write_byte(cpu, addr, result);
+	exec_ADC_core(cpu, result);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SAX(t_cpu *cpu, const t_instruct *instr)
+static void exec_SAX(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t op = cpu->x & cpu->a;
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
@@ -900,7 +928,7 @@ void exec_SAX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SHA(t_cpu *cpu, const t_instruct *instr)
+static void exec_SHA(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	uint8_t op = cpu->x & cpu->a & (((cpu->addrbus >> 8) & 0xFF) + 1);
@@ -908,7 +936,7 @@ void exec_SHA(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SHX(t_cpu *cpu, const t_instruct *instr)
+static void exec_SHX(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	uint8_t op = cpu->x & (((cpu->addrbus >> 8) & 0xFF) + 1);
@@ -916,7 +944,7 @@ void exec_SHX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SHY(t_cpu *cpu, const t_instruct *instr)
+static void exec_SHY(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->addrbus = get_addr(cpu, instr->addrmode);
 	uint8_t op = cpu->y & (((cpu->addrbus >> 8) & 0xFF) + 1);
@@ -924,7 +952,7 @@ void exec_SHY(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_LAX(t_cpu *cpu, const t_instruct *instr)
+static void exec_LAX(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t op = get_operand(cpu, instr->addrmode);
 	exec_LDA_core(cpu, op);
@@ -932,15 +960,16 @@ void exec_LAX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_DCP(t_cpu *cpu, const t_instruct *instr)
+static void exec_DCP(t_cpu *cpu, const t_instruct *instr)
 {
-	uint8_t *op_addr = get_operand_addr(cpu, instr->addrmode);
-	exec_decrement_core(cpu, op_addr);
-	exec_compare_core(cpu, cpu->a, *op_addr);
+	uint16_t addr = get_addr(cpu, instr->addrmode);
+	uint8_t result = exec_decrement_core(cpu, read_byte(cpu, addr));
+	write_byte(cpu, addr, result);
+	exec_compare_core(cpu, cpu->a, result);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ARR(t_cpu *cpu, const t_instruct *instr)
+static void exec_ARR(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t result = cpu->a & get_operand(cpu, instr->addrmode);
 	result >>= 1;
@@ -952,10 +981,12 @@ void exec_ARR(t_cpu *cpu, const t_instruct *instr)
 
 	// Set overflow flag if bit 6 is different from bit 7
 	SET_BIT(cpu->status, FLAG_V, ((result >> 6) ^ (result >> 5)) & 1);
+
+	cpu->a = result;
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_XAA(t_cpu *cpu, const t_instruct *instr)
+static void exec_XAA(t_cpu *cpu, const t_instruct *instr)
 {
 	// idealise version used to pass simple NES tests
 	cpu->a = cpu->x;
@@ -965,12 +996,12 @@ void exec_XAA(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SHS(t_cpu *cpu, const t_instruct *instr)
+static void exec_SHS(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_OAL(t_cpu *cpu, const t_instruct *instr)
+static void exec_OAL(t_cpu *cpu, const t_instruct *instr)
 {
 	// Behaves like LAX on NES
 	uint8_t op = get_operand(cpu, instr->addrmode);
@@ -979,7 +1010,7 @@ void exec_OAL(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_LAS(t_cpu *cpu, const t_instruct *instr)
+static void exec_LAS(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->sp &= get_operand(cpu, instr->addrmode);
 	cpu->a = cpu->sp;
@@ -989,7 +1020,7 @@ void exec_LAS(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_SBX(t_cpu *cpu, const t_instruct *instr)
+static void exec_SBX(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t reg = cpu->a & cpu->x;
 	uint8_t op = get_operand(cpu, instr->addrmode);
@@ -997,22 +1028,24 @@ void exec_SBX(t_cpu *cpu, const t_instruct *instr)
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ISC(t_cpu *cpu, const t_instruct *instr)
+static void exec_ISC(t_cpu *cpu, const t_instruct *instr)
 {
-	uint8_t *op_addr = get_operand_addr(cpu, instr->addrmode);
-	exec_increment_core(cpu, op_addr);
-	exec_SBC_core(cpu, *op_addr);
+	uint16_t addr = get_addr(cpu, instr->addrmode);
+	uint8_t result = exec_increment_core(cpu, read_byte(cpu, addr));
+
+	write_byte(cpu, addr, result);
+	exec_SBC_core(cpu, result);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ASR(t_cpu *cpu, const t_instruct *instr)
+static void exec_ASR(t_cpu *cpu, const t_instruct *instr)
 {
 	cpu->a &= get_operand(cpu, instr->addrmode);
-	exec_LSR_core(cpu, &cpu->a);
+	cpu->a = exec_LSR_core(cpu, cpu->a);
 	cpu->pc += instr->n_bytes;
 }
 
-void exec_ANC(t_cpu *cpu, const t_instruct *instr)
+static void exec_ANC(t_cpu *cpu, const t_instruct *instr)
 {
 	exec_AND_core(cpu, get_operand(cpu, instr->addrmode));
 	SET_BIT(cpu->status, FLAG_C, cpu->a & BIT_7);

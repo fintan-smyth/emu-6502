@@ -4,16 +4,36 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+void	map_memory(struct pt_entry *pagetable, uint16_t addr, uint8_t pages,
+				uint8_t *memory, void *read_handler, void *write_handler)
+{
+	uint8_t pageno = addr >> 10;
+	for (uint8_t i = 0; i < pages; i++)
+	{
+		struct pt_entry *entry = &pagetable[pageno + i];
+
+		entry->memory = (memory == NULL) ? NULL : &memory[i * 0x400];
+		entry->read_handler = read_handler;
+		entry->write_handler = write_handler;
+	}
+}
+
 uint8_t	read_byte(t_cpu *cpu, size_t addr)
 {
-	return cpu->memory[addr];
+	uint8_t	pageno = addr >> 10;
+	struct pt_entry *entry = &cpu->pagetable[pageno];
+
+	if (entry->memory)
+		return entry->memory[addr & 0x03FF];
+
+	return entry->read_handler(entry, cpu, addr);
 }
 
 uint16_t	read_word(t_cpu *cpu, size_t addr)
 {
 	uint16_t word = 0;
-	uint8_t lo = cpu->memory[addr];
-	uint8_t hi = cpu->memory[addr + 1];
+	uint8_t lo = read_byte(cpu, addr);
+	uint8_t hi = read_byte(cpu, addr + 1);
 
 	word = (hi << 8) | lo;
 
@@ -23,8 +43,8 @@ uint16_t	read_word(t_cpu *cpu, size_t addr)
 uint16_t	read_word_zp(t_cpu *cpu, size_t addr)
 {
 	uint16_t word = 0;
-	uint8_t lo = cpu->memory[addr];
-	uint8_t hi = cpu->memory[(addr + 1) & 0xFF];
+	uint8_t lo = read_byte(cpu, addr);
+	uint8_t hi = read_byte(cpu, (addr + 1) & 0xFF);
 
 	word = (hi << 8) | lo;
 
@@ -33,25 +53,22 @@ uint16_t	read_word_zp(t_cpu *cpu, size_t addr)
 
 void	write_byte(t_cpu *cpu, size_t addr, uint8_t value)
 {
-	cpu->memory[addr] = value;
+	uint8_t	pageno = addr >> 10;
+	struct pt_entry *entry = &cpu->pagetable[pageno];
+
+	if (entry->write_handler)
+		entry->write_handler(entry, cpu, addr, value);
 }
 
-u_int16_t	handle_zeropage_y_indirect(t_cpu *cpu)
+void	passthrough_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
 {
-	uint16_t	addr = 0;
-	uint16_t	zp_addr = read_byte(cpu, cpu->pc + 1);			// Get zero-page addr
-	uint8_t		zp_content = read_byte(cpu, zp_addr);			// Get zero-page addr contents
-	uint8_t		zp_next_content = read_byte(cpu, zp_addr + 1);	// Get zero-page addr + 1 contents
+	entry->memory[addr & 0x3FF] = val;
+	(void)arg;
+}
 
-	addr = zp_content + cpu->y;									// Add zp contents to Y register
-	if (addr > 0xFF)											// Check for carry
-	{
-		zp_next_content++;
-		addr &= 0xFF;
-	}
-	addr |= (zp_next_content << 8);								// Combine high-order bits;
-	
-	return addr;
+void	setup_default_pagetable(t_cpu *cpu)
+{
+	map_memory(cpu->pagetable, 0x00, 64, cpu->memory, NULL, passthrough_write);
 }
 
 uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
@@ -84,7 +101,6 @@ uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 			addrbus = read_word_zp(cpu, addrbus);
 			break;
 		case (ZEROPAGE_Y_INDIRECT):
-			// addrbus = handle_zeropage_y_indirect(cpu);
 			addrbus = read_byte(cpu, cpu->pc + 1);
 			addrbus = read_word_zp(cpu, addrbus);
 			if ((addrbus & 0xFF) + cpu->y > 0xFF)
@@ -130,10 +146,10 @@ uint8_t	get_operand(t_cpu *cpu, AddrMode mode)
 			exit(1);
 			break;
 		case (ACCUMULATOR):
-			exit(2);
+			op = cpu->a;
 			break;
 		case (IMMEDIATE):
-			op = cpu->memory[cpu->pc + 1];
+			op = read_byte(cpu, cpu->pc + 1);
 			break;
 		default:
 			op = read_byte(cpu, get_addr(cpu, mode));
@@ -141,24 +157,6 @@ uint8_t	get_operand(t_cpu *cpu, AddrMode mode)
 	}
 
 	return op;
-}
-
-uint8_t	*get_operand_addr(t_cpu *cpu, AddrMode mode)
-{
-	switch (mode) {
-		case (IMPLIED):
-			exit(3);
-			break;
-		case (ACCUMULATOR):
-			return &cpu->a;
-			break;
-		case (IMMEDIATE):
-			return &cpu->memory[cpu->pc + 1];
-			break;
-		default:
-			return &cpu->memory[get_addr(cpu, mode)];
-			break;
-	}
 }
 
 void	push_stack(t_cpu *cpu, uint8_t val)

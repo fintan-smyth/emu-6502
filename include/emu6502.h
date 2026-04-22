@@ -170,6 +170,13 @@ typedef struct t_opcode
 	uint8_t cycles;
 }	t_instruct;
 
+struct pt_entry
+{
+	uint8_t	*memory;
+	uint8_t	(*read_handler)(struct pt_entry *entry, void *, uint16_t);
+	void	(*write_handler)(struct pt_entry *entry, void *, uint16_t, uint8_t);
+};
+
 typedef struct t_cpu
 {
 	uint8_t 	a;
@@ -185,25 +192,29 @@ typedef struct t_cpu
 	size_t		cycles;
 	uint8_t		cycle_events;
 	int			logfd;
+	struct pt_entry	pagetable[0x40];
 }	t_cpu;
 
 uint8_t		read_byte(t_cpu *cpu, size_t addr);
 uint16_t	read_word(t_cpu *cpu, size_t addr);
 uint16_t	read_word_zp(t_cpu *cpu, size_t addr);
 void		write_byte(t_cpu *cpu, size_t addr, uint8_t value);
+void		passthrough_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val);
+void		map_memory(struct pt_entry *pagetable, uint16_t addr, uint8_t pages,
+				 uint8_t *memory, void *read_handler, void *write_handler);
+void		setup_default_pagetable(t_cpu *cpu);
 void		push_stack(t_cpu *cpu, uint8_t val);
 uint8_t 	pop_stack(t_cpu *cpu);
 
 uint16_t	get_addr(t_cpu *cpu, AddrMode mode);
 uint8_t		get_operand(t_cpu *cpu, AddrMode mode);
-uint8_t		*get_operand_addr(t_cpu *cpu, AddrMode mode);
 
 const t_instruct	*get_instruction(uint8_t opcode);
 const char			*get_instruct_str(enum instructions instr);
 const char			*get_addrmode_str(AddrMode mode);
 
 void	execute_instr(t_cpu *cpu, const t_instruct *instr);
-void	print_instr(uint8_t *mem, uint16_t addr);
+void	print_instr(t_cpu *cpu, uint16_t addr);
 void 	print_registers(t_cpu *cpu);
 void	print_debug_view(t_cpu *cpu, uint16_t pc);
 void	log_instr(int fd, t_cpu *cpu, const t_instruct *instr);
