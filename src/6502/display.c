@@ -1,10 +1,12 @@
 #include "emu6502.h"
+#include "nes.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <raylib.h>
 
-static const int instr_cols[ISCTRUCTIONS_MAX] = {
+static const int instr_cols[INSTRUCTIONS_MAX] = {
 	[LDA] = COL_RED,
 	[LDX] = COL_RED,
 	[LDY] = COL_RED,
@@ -250,7 +252,9 @@ const char *get_instruct_str(enum instructions instr)
 			return "ISC";
 		case (ASR):
 			return "ASR";
-		case (ISCTRUCTIONS_MAX):
+		case (ANC):
+			return "ANC";
+		case (INSTRUCTIONS_MAX):
 			return "INSTRUCTIONS_MAX";
 	}
 	return NULL;
@@ -425,6 +429,33 @@ void	print_zeropage(t_cpu *cpu)
 	printf("\e[m\n");
 }
 
+void	print_vram(t_ppu *ppu)
+{
+	printf("    \e[34;4;1m 00");
+	for (uint16_t i = 1; i < 0x20; i++)
+	{
+		printf("%s%s", i % 4 == 0 ? " " : "",
+						i % 16 == 0 ? " " : ""
+		);
+		printf(" %02X", i);
+	}
+	printf("\e[m\n\e[34;1m000|");
+	for (uint16_t i = 0;;)
+	{
+		uint8_t op = ppu_read(ppu, 0x2000 + i++);
+		colour_instr(op);
+		printf(" %02X", op);
+		printf("%s%s", i % 4 == 0 ? " " : "",
+						i % 16 == 0 ? " " : ""
+		);
+		if (i == 0x1000)
+			break;
+		if (i % 32 == 0)
+			printf("\n\e[34;1m%03X|", i);
+	}
+	printf("\e[m\n");
+}
+
 void print_debug_view(t_cpu *cpu, uint16_t pc)
 {
 	print_instr(cpu, pc);
@@ -432,6 +463,11 @@ void print_debug_view(t_cpu *cpu, uint16_t pc)
 	print_registers(cpu);
 	print_stack(cpu);
 	print_zeropage(cpu);
+	printf("nmi: %d irq: %d\n", cpu->nmi_pending, cpu->irq_pending);
+	t_ppu *ppu = &((t_nes *)cpu->parent_device)->ppu;
+	// print_vram(ppu);
+	printf("PPUCTRL: 0x%02X PPUSTATUS: %02X ppu->v: 0x%04X ppu->t: 0x%04X\n", ppu->registers[PPUCTRL], ppu->registers[PPUSTATUS], ppu->v, ppu->t);
+	printf("ppu_cycles: %u scanline: %u\n", ppu->cycle, ppu->scanline);
 }
 
 void log_instr(int fd, t_cpu *cpu, const t_instruct *instr)

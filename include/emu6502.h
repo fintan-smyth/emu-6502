@@ -33,24 +33,35 @@
 #define SHIFT_V 6
 #define SHIFT_N 7
 
-#define BIT_0 1
-#define BIT_1 2
-#define BIT_2 4
-#define BIT_3 8
-#define BIT_4 16
-#define BIT_5 32
-#define BIT_6 64
-#define BIT_7 128
-#define BIT_8 256
+#define BIT_0	0x01
+#define BIT_1	0x02
+#define BIT_2	0x04
+#define BIT_3	0x08
+#define BIT_4	0x10
+#define BIT_5	0x20
+#define BIT_6	0x40
+#define BIT_7	0x80
+#define BIT_8	0x100
+#define BIT_9	0x200
+#define BIT_10	0x400
+#define BIT_11	0x800
+#define BIT_12	0x1000
+#define BIT_13	0x2000
+#define BIT_14	0x4000
+#define BIT_15	0x8000
 
-#define SIGN_BIT 128
+#define SIGN_BIT 0x80
 
-#define CYCLE_PAGECROSS 64
-#define CYCLE_BRANCHTAKEN 128
-#define CYCLE_MASK 0x0F
+#define CYCLE_DMA			0x20
+#define CYCLE_PAGECROSS		0x40
+#define CYCLE_BRANCHTAKEN	0x80
+#define CYCLE_MASK			0x0F
 
 #define SET_BIT(var, mask, expr) \
     ((var) = ((var) & ~(mask)) | ((!!(expr)) ? (mask) : 0))
+
+#define APPLY_BITS(target, source, pos, n) \
+   ((target) = (((target) & ~(((1 << (n)) - 1) << (pos))) | (((source) & ((1 << (n)) - 1)) << (pos))))
 
 #define COL_BLACK 0
 #define COL_RED 1
@@ -159,7 +170,7 @@ enum instructions
 	ISC,
 	ASR,
 	ANC,
-	ISCTRUCTIONS_MAX,
+	INSTRUCTIONS_MAX,
 };
 
 typedef struct t_opcode
@@ -173,24 +184,26 @@ typedef struct t_opcode
 struct pt_entry
 {
 	uint8_t	*memory;
-	uint8_t	(*read_handler)(struct pt_entry *entry, void *, uint16_t);
-	void	(*write_handler)(struct pt_entry *entry, void *, uint16_t, uint8_t);
+	uint8_t	(*read_handler)(struct pt_entry *, void *, uint16_t);
+	void	(*write_handler)(struct pt_entry *, void *, uint16_t, uint8_t);
 };
 
 typedef struct t_cpu
 {
+	void		*parent_device;
 	uint8_t 	a;
 	uint8_t 	x;
 	uint8_t 	y;
 	uint8_t 	sp;
 	uint8_t		status;
 	uint16_t	pc;
-	uint8_t		dbus;
 	uint16_t	addrbus;
 	uint8_t		*memory;
 	size_t		memsize;
 	size_t		cycles;
 	uint8_t		cycle_events;
+	bool		nmi_pending;
+	bool		irq_pending;
 	int			logfd;
 	struct pt_entry	pagetable[0x40];
 }	t_cpu;
@@ -213,10 +226,15 @@ const t_instruct	*get_instruction(uint8_t opcode);
 const char			*get_instruct_str(enum instructions instr);
 const char			*get_addrmode_str(AddrMode mode);
 
-void	execute_instr(t_cpu *cpu, const t_instruct *instr);
+void		exec_hardware_interrupt(t_cpu *cpu, uint16_t vector_addr);
+uint8_t		execute_instr(t_cpu *cpu, const t_instruct *instr);
+uint8_t		cpu_step(t_cpu *cpu);
+uint64_t	cpu_run_for(t_cpu *cpu, uint64_t n_cycles);
+
 void	print_instr(t_cpu *cpu, uint16_t addr);
 void 	print_registers(t_cpu *cpu);
 void	print_debug_view(t_cpu *cpu, uint16_t pc);
 void	log_instr(int fd, t_cpu *cpu, const t_instruct *instr);
+
 
 #endif

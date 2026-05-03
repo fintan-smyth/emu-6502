@@ -57,3 +57,7 @@ dkms.conf
 emu6502
 compile_flags.txt
 6502_functional_test*
+nestest*
+*.log
+*.nes
+sprite_hit*

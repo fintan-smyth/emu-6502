@@ -1,7 +1,9 @@
 #include "emu6502.h"
 #include "nes.h"
 #include <ctype.h>
+#include <raylib.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -136,29 +138,98 @@ void	run_until_addr(t_cpu *cpu, uint16_t addr)
 	}
 }
 
-static inline void	run_until_breakpoint(t_cpu *cpu, BSTSet_word *breakpoints)
+static inline void	run_until_breakpoint(t_nes *nes, BSTSet_word *breakpoints)
 {
 	uint16_t old_pc = 0xFFFF;
 	g_var = 0;
-	while (cpu->pc != old_pc && g_var != SIGINT && cpu->cycles < 500000000)
+	// while (nes->cpu.pc != old_pc && g_var != SIGINT)
+	while (g_var != SIGINT && !WindowShouldClose())
 	{
-		old_pc = cpu->pc;
-		uint8_t opcode = read_byte(cpu, cpu->pc);
-		const t_instruct *instr = get_instruction(opcode);
+		old_pc = nes->cpu.pc;
 		// if (instr->instruction > NOP)
 		// 	break ;
-		execute_instr(cpu, instr);
+		nes_step(nes);
 		// printf("\e[2J\e[H");
 		// print_debug_view(cpu, old_pc);
-		if (bstset_word_contains(breakpoints, cpu->pc))
+		if (bstset_word_contains(breakpoints, nes->cpu.pc))
 			break ;
 	}
 	g_var = 0;
 }
 
+void	debug_loop(t_nes *nes)
+{
+	uint16_t addrbuf;
+	BSTSet_word breakpoints = {};
+	signal(SIGINT, sig_handler);
+	while (!WindowShouldClose())
+	{
+		uint16_t orig_pc = nes->cpu.pc;
+		char c = 0;
+		while (c != '\n' && c != 'n')
+		{
+			printf("\e[2J\e[H\e[32;1m<<< FETCH <<<\e[m\n");
+			printf("-------------\n");
+			print_debug_view(&nes->cpu, orig_pc);
+			c = tolower(getchar());
+			switch (c) {
+				case ('y'):
+					nes->cpu.y = read_byte_input("Y = ");
+					break;
+				case ('x'):
+					nes->cpu.x = read_byte_input("X = ");
+					break;
+				case ('a'):
+					nes->cpu.a = read_byte_input("A = ");
+					break;
+				// case ('p'):
+				// 	nes.cpu.pc = read_byte_input("PC = ");
+				// 	break;
+				case ('s'):
+					nes->cpu.sp = read_byte_input("SP = ");
+					break;
+				case ('b'):
+					bstset_word_insert(&breakpoints, read_word_input("\e[31;1mBREAK\e[m: "));
+					// _bstset_word_print(breakpoints.tree, 7);
+					// printf("contains 0x3373: %d\n", bstset_word_contains(&breakpoints, 0x3373));
+					// getchar();
+					break;
+				case ('p'):
+					addrbuf = read_word_input("\e[32;1mPRINT\e[m: ");
+					printf("\n\e[32:1m%04X\e[m: 0x%02X\n", addrbuf, read_byte(&nes->cpu, addrbuf));
+					printf("Press any key to continue...\n");
+					getchar();
+					continue ;
+				case ('c'):
+					run_until_breakpoint(nes, &breakpoints);
+					orig_pc = nes->cpu.pc;
+					continue ;
+				case ('q'):
+					bstset_word_clear(&breakpoints, NULL);
+					return;
+				default:
+					break;
+			}
+		}
+
+		nes_step(nes);
+		printf("\e[2J\e[H\e[31;1m>>> EXECUTE >>>\e[m\n");
+		printf("-------------\n");
+		print_debug_view(&nes->cpu, orig_pc);
+		getchar();
+		// nes.cpu.pc += instr->n_bytes;
+		// if (nes.cpu.pc == orig_pc)
+		// 	break;
+	}
+	printf("PC: %04X\n", nes->cpu.pc);
+
+}
+
 int	main(int argc, char **argv)
 {
-	signal(SIGINT, sig_handler);
+	// draw_palette();
+	// test_tile_fetch();
+	// exit(0);
 	t_nes nes = {};
 	uint8_t	mem[0x10000];
 	nes.cpu.logfd = open("output.log", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
@@ -179,81 +250,35 @@ int	main(int argc, char **argv)
 	// exit(1);
 	// nes.cpu.pc = 0x400;
 
-	nes_load_cartridge(&nes, read_nes(argv[1]));
-	nes.cpu.pc = 0xC000;
+	init_nes(&nes);
+	init_raylib(&nes);
+	t_cart *cart = read_nes_cart(argv[1]);
+	if (cart == NULL)
+		return (printf("Error loading cartridge\n"), 1);
+	nes_load_cartridge(&nes, cart);
+	// draw_tile(&nes.ppu, 0, 0, 0);
+	// draw_pattern_table(&nes.ppu, 0, 0, 0);
+	// draw_pattern_table(&nes.ppu, 1, 128, 0);
+	// UpdateTexture(nes.ppu.screen_tex, nes.ppu.screenbuf);
+	// BeginDrawing();
+	// DrawTextureEx(nes.ppu.screen_tex, (Vector2){0, 0}, 0, SCALING, WHITE);
+	// EndDrawing();
 
 	set_term_settings();
-	BSTSet_word breakpoints = {};
 	// bstset_word_insert(&breakpoints, 0x3373);
 	
-	nes.cpu.status = FLAG_E | FLAG_I;
-	nes.cpu.sp = 0xFD;
-	nes.cpu.cycles = 7;
-	uint16_t addrbuf;
-	while (true)
-	{
-		uint16_t orig_pc = nes.cpu.pc;
-		char c = 0;
-		while (c != '\n' && c != 'n')
-		{
-			printf("\e[2J\e[H\e[32;1m<<< FETCH <<<\e[m\n");
-			printf("-------------\n");
-			print_debug_view(&nes.cpu, orig_pc);
-			c = tolower(getchar());
-			switch (c) {
-				case ('y'):
-					nes.cpu.y = read_byte_input("Y = ");
-					break;
-				case ('x'):
-					nes.cpu.x = read_byte_input("X = ");
-					break;
-				case ('a'):
-					nes.cpu.a = read_byte_input("A = ");
-					break;
-				// case ('p'):
-				// 	nes.cpu.pc = read_byte_input("PC = ");
-				// 	break;
-				case ('s'):
-					nes.cpu.sp = read_byte_input("SP = ");
-					break;
-				case ('b'):
-					bstset_word_insert(&breakpoints, read_word_input("\e[31;1mBREAK\e[m: "));
-					// _bstset_word_print(breakpoints.tree, 7);
-					// printf("contains 0x3373: %d\n", bstset_word_contains(&breakpoints, 0x3373));
-					// getchar();
-					break;
-				case ('p'):
-					addrbuf = read_word_input("\e[32;1mPRINT\e[m: ");
-					printf("\n\e[32:1m%04X\e[m: 0x%02X\n", addrbuf, read_byte(&nes.cpu, addrbuf));
-					printf("Press any key to continue...\n");
-					getchar();
-					continue ;
-				case ('c'):
-					run_until_breakpoint(&nes.cpu, &breakpoints);
-					orig_pc = nes.cpu.pc;
-					continue ;
-				case ('q'):
-					goto END;
-				default:
-					break;
-			}
-		}
-
-		uint8_t opcode = read_byte(&nes.cpu, nes.cpu.pc);
-		const t_instruct *instr = get_instruction(opcode);
-		execute_instr(&nes.cpu, instr);
-		printf("\e[2J\e[H\e[31;1m>>> EXECUTE >>>\e[m\n");
-		printf("-------------\n");
-		print_debug_view(&nes.cpu, orig_pc);
-		getchar();
-		// nes.cpu.pc += instr->n_bytes;
-		// if (nes.cpu.pc == orig_pc)
-		// 	break;
-	}
-	// printf("PC: %04X\n", nes.cpu.pc);
+	nes.cpu.status = FLAG_E;
+	nes.cpu.sp = 0xFF;
+	nes.cpu.cycles = 0;
+	exec_hardware_interrupt(&nes.cpu, 0xFFFC);
+	while (!WindowShouldClose())
+		nes_step(&nes);
+	// debug_loop(&nes);
 END:
-	bstset_word_clear(&breakpoints, NULL);
+	free_cart(nes.cart);
+	free(nes.ppu.screenbuf);
 	reset_term_settings();
 	close(nes.cpu.logfd);
 	printf("cycles: %ld\n", nes.cpu.cycles);
+	CloseWindow();
 }

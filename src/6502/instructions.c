@@ -1133,7 +1133,7 @@ static void (*const instr_funcs[])(t_cpu *, const t_instruct *) = {
 	[ANC] = exec_ANC,
 };
 
-void	handle_cycles(t_cpu *cpu, const t_instruct *instr)
+uint8_t	handle_cycles(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t cycles = 0;
 	cycles += instr->cycles & 0x0F;
@@ -1157,17 +1157,20 @@ void	handle_cycles(t_cpu *cpu, const t_instruct *instr)
 		default:
 			break ;
 	}
+	if (cpu->cycle_events & CYCLE_DMA)
+		cycles += 513;
 	cpu->cycles += cycles;
+	return cycles;
 }
 
-void	execute_instr(t_cpu *cpu, const t_instruct *instr)
+uint8_t	execute_instr(t_cpu *cpu, const t_instruct *instr)
 {
 	#ifdef NES_MODE
-		log_instr(cpu->logfd, cpu, instr);
+		// log_instr(cpu->logfd, cpu, instr);
 	#endif
 
 	cpu->cycle_events = 0;
 
 	instr_funcs[instr->instruction](cpu, instr);
-	handle_cycles(cpu, instr);
+	return handle_cycles(cpu, instr);
 }

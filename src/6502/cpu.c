@@ -12,9 +12,12 @@ void	map_memory(struct pt_entry *pagetable, uint16_t addr, uint8_t pages,
 	{
 		struct pt_entry *entry = &pagetable[pageno + i];
 
-		entry->memory = (memory == NULL) ? NULL : &memory[i * 0x400];
-		entry->read_handler = read_handler;
-		entry->write_handler = write_handler;
+		if (memory)
+			entry->memory = &memory[i * 0x400];
+		if (read_handler)
+			entry->read_handler = read_handler;
+		if (write_handler)
+			entry->write_handler = write_handler;
 	}
 }
 
@@ -23,10 +26,11 @@ uint8_t	read_byte(t_cpu *cpu, size_t addr)
 	uint8_t	pageno = addr >> 10;
 	struct pt_entry *entry = &cpu->pagetable[pageno];
 
-	if (entry->memory)
-		return entry->memory[addr & 0x03FF];
+	// printf("read addr: %04zX\n", addr);
+	if (entry->read_handler)
+		return entry->read_handler(entry, cpu, addr);
 
-	return entry->read_handler(entry, cpu, addr);
+	return entry->memory[addr & 0x03FF];
 }
 
 uint16_t	read_word(t_cpu *cpu, size_t addr)
@@ -169,4 +173,44 @@ uint8_t pop_stack(t_cpu *cpu)
 {
 	uint16_t addr = 0x100 | ++cpu->sp;
 	return read_byte(cpu, addr);
+}
+
+void exec_hardware_interrupt(t_cpu *cpu, uint16_t vector_addr)
+{
+	push_stack(cpu, (cpu->pc >> 8) & 0xFF);
+	push_stack(cpu, cpu->pc & 0xFF);
+	push_stack(cpu, (cpu->status | FLAG_E) & ~FLAG_B);
+
+	cpu->status |= FLAG_I;
+	cpu->pc = read_word(cpu, vector_addr);
+}
+
+uint8_t	cpu_step(t_cpu *cpu)
+{
+	if (cpu->nmi_pending)
+	{
+		exec_hardware_interrupt(cpu, 0xFFFA);
+		cpu->nmi_pending = 0;
+		return 7;
+	}
+
+	if (cpu->irq_pending & !(cpu->status & FLAG_I))
+	{
+		exec_hardware_interrupt(cpu, 0xFFFE);
+		return 7;
+	}
+
+	uint8_t opcode = read_byte(cpu, cpu->pc);
+	const t_instruct *instr = get_instruction(opcode);
+	return execute_instr(cpu, instr);
+}
+
+uint64_t cpu_run_for(t_cpu *cpu, uint64_t n_cycles)
+{
+	uint64_t cycles = 0;
+
+	while (cycles < n_cycles)
+		cycles += cpu_step(cpu);
+
+	return cycles - n_cycles;
 }
