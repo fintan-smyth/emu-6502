@@ -23,6 +23,11 @@ void	handle_player_input(t_nes *nes)
 	if (IsKeyDown(KEY_D))
 		nes->joy_state[0] |= JOY_RIGHT;
 
+	if (IsKeyPressed(KEY_LEFT_SHIFT))
+		SetTargetFPS(nes->settings.fps * 2);
+	if (IsKeyReleased(KEY_LEFT_SHIFT))
+		SetTargetFPS(nes->settings.fps);
+
 	if (IsKeyPressed(KEY_R))
 	{
 		nes->cpu.sp = 0xFF;

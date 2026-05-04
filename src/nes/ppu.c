@@ -269,6 +269,36 @@ void	fetch_tile_row(t_ppu *ppu, uint8_t *buf, uint8_t table, uint8_t tile_id, ui
 	}
 }
 
+void	fetch_sprite_row_8x16(t_ppu *ppu, t_sprite *sprite, uint8_t row)
+{
+	uint16_t	addr;
+	uint8_t		table = sprite->tile_id & 0x1;
+	uint8_t		tile_id = sprite->tile_id & 0xFE;
+
+	if (sprite->attr & BIT_7)
+	{
+		if (row < 8)
+			addr = (table * 0x1000) | ((tile_id + 1) << 4) | (7 - row);
+		else
+			addr = (table * 0x1000) | (tile_id << 4) | (7 - (row - 8));
+	}
+	else
+	{
+		if (row < 8)
+			addr = (table * 0x1000) | (tile_id << 4) | row;
+		else
+			addr = (table * 0x1000) | ((tile_id + 1) << 4) | (row - 8);
+	}
+
+	uint8_t lo = ppu_read(ppu, addr);
+	uint8_t hi = ppu_read(ppu, addr + 8);
+	for (int i = 0; i < 8; i++)
+	{
+		uint8_t shift = 7 - i;
+		sprite->pixels[i] = ((lo >> shift) & 0x1) | (((hi >> shift) & 0x1) << 1);
+	}
+}
+
 uint8_t	get_palette_id(t_ppu *ppu)
 {
 	uint16_t	coarse_x = ppu->v & 0x1F;
@@ -286,7 +316,7 @@ uint8_t	get_palette_id(t_ppu *ppu)
 uint8_t get_bg_pixel_color(t_ppu *ppu, uint8_t pixel, uint8_t palette_id, bool *bg_opaque, uint32_t x_pos)
 {
 	uint8_t	col_index;
-	bool draw_bg = (ppu->registers[PPUMASK] & PPUMASK_BG_LEFT) || (x_pos > 7);
+	bool draw_bg = (ppu->registers[PPUMASK] & PPUMASK_BG) && ((ppu->registers[PPUMASK] & PPUMASK_BG_LEFT) || (x_pos > 7));
 
 	if (pixel == 0 || !draw_bg)
 	{
@@ -305,7 +335,7 @@ uint8_t get_bg_pixel_color(t_ppu *ppu, uint8_t pixel, uint8_t palette_id, bool *
 
 void	get_sprite_pixel(t_ppu *ppu, uint32_t x_pos, bool bg_opaque, uint8_t *col_index)
 {
-	if (!(ppu->registers[PPUMASK] & PPUMASK_SP_LEFT) && (x_pos < 8))
+	if (!(ppu->registers[PPUMASK] & PPUMASK_SP) || (!(ppu->registers[PPUMASK] & PPUMASK_SP_LEFT) && (x_pos < 8)))
 		return ;
 
 	for (uint8_t i = 0; i < ppu->secondary_count; i++)
@@ -318,6 +348,14 @@ void	get_sprite_pixel(t_ppu *ppu, uint32_t x_pos, bool bg_opaque, uint8_t *col_i
 			if (sprite->attr & BIT_6)
 				x_diff = 7 - x_diff;
 
+			// if (sprite->sprite_0)
+			// {
+			// 	printf("\e[32;1mSPRITE 0\e[m: x: %3d y: %3d tile_id: %3d attr: 0x%02X\n", sprite->x, sprite->y, sprite->tile_id, sprite->attr);
+			// 	printf("scanline: %u cycle: %u diff: %u bg_opaque: %u\n", ppu->scanline, ppu->cycle, x_diff, bg_opaque);
+			// 	for (uint8_t i = 0; i < 8; i++)
+			// 		printf("[%d] ", sprite->pixels[x_diff]);
+			// 	printf("\n\n");
+			// }
 			uint8_t pixel = sprite->pixels[x_diff];
 			if (pixel == 0)
 				continue ;
@@ -329,6 +367,7 @@ void	get_sprite_pixel(t_ppu *ppu, uint32_t x_pos, bool bg_opaque, uint8_t *col_i
 			{
 				ppu->registers[PPUSTATUS] |= SPRITE_0_HIT;
 				// printf("SPRITE_0 HIT! pos: (%d, %d)\n", x_pos, ppu->scanline);
+				// printf("\e[31;1mSprite 0 Hit!\e[m:  scanline %3d cycle %3d\n", ppu->scanline, ppu->cycle);
 			}
 
 			if (!(sprite->attr & BIT_5) || !bg_opaque)
@@ -413,33 +452,45 @@ void	ppu_increment_y(t_ppu *ppu)
 	}
 }
 
+void	get_sprite_data(t_ppu *ppu, t_sprite *sprite, uint32_t oam_index)
+{
+	uint32_t i = oam_index * 4;
+	sprite->y = ppu->oam[i];
+	sprite->tile_id = ppu->oam[i + 1];
+	sprite->attr = ppu->oam[i + 2];
+	sprite->x = ppu->oam[i + 3];
+	sprite->sprite_0 = (oam_index == 0);
+}
+
 void	find_scanline_sprites(t_ppu *ppu)
 {
 	ppu->secondary_count = 0;
 	memset(ppu->secondary_oam, 0, sizeof(t_sprite) * 8);
+	const bool is_8x16_mode = ppu->registers[PPUCTRL] & BIT_5;
+	const uint32_t min_diff = is_8x16_mode ? 16 : 8;
 
-	for (int i = ppu->registers[OAMADDR]; i < 256; i += 4)
+	for (int32_t i = ppu->oam_addr; i < 64; i++)
 	{
-		uint8_t y = ppu->oam[i];
+		uint8_t y = ppu->oam[i * 4];
 		if (y >= 0xEF)
 			continue ;
 		uint32_t diff = ppu->scanline - y;
-		if (diff < 8)
+		if (diff < min_diff)
 		{
 			if (ppu->secondary_count < 0x8)
 			{
 				t_sprite *sprite = &ppu->secondary_oam[ppu->secondary_count];
-				sprite->y = y;
-				sprite->tile_id = ppu->oam[i + 1];
-				sprite->attr = ppu->oam[i + 2];
-				sprite->x = ppu->oam[i + 3];
-				if (i == 0)
-					sprite->sprite_0 = true;
+				get_sprite_data(ppu, sprite, i);
+
+				if (is_8x16_mode)
+					fetch_sprite_row_8x16(ppu, sprite, diff);
 				else
-					sprite->sprite_0 = false;
-				if (sprite->attr & BIT_7)
-					diff = 7 - diff;
-				fetch_tile_row(ppu, sprite->pixels, (ppu->registers[PPUCTRL] >> 3) & 0x1, sprite->tile_id, diff);
+				{
+					if (sprite->attr & BIT_7)
+						diff = 7 - diff;
+					fetch_tile_row(ppu, sprite->pixels, (ppu->registers[PPUCTRL] >> 3) & 0x1, sprite->tile_id, diff);
+				}
+
 				ppu->secondary_count++;
 				// if (y == 0)
 				// 	printf("FETCH: pos: (%d, %d)\n", sprite->x, ppu->scanline);
@@ -467,13 +518,16 @@ void ppu_tick(t_ppu *ppu)
 				ppu_increment_y(ppu);
 		}
 
-		else if (ppu->cycle == 265)
+		if (ppu->cycle == 265)
 		{
-			find_scanline_sprites(ppu);
 			ppu->v = (ppu->v & ~0x41F) | (ppu->t & 0x41F);
+			find_scanline_sprites(ppu);
 		}
-		else if (ppu->cycle <= 320)
-			ppu->registers[OAMADDR] = 0;
+		if (ppu->cycle >= 265 && ppu->cycle <= 320)
+		{
+			// printf("OAMADDR reset scanline: %d cycle: %d\n", ppu->scanline, ppu->cycle);
+			ppu->oam_addr = 0;
+		}
 
 		// if (ppu->cycle == 328 || ppu->cycle == 336)
 		// 	ppu_increment_x(ppu);

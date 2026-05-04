@@ -11,7 +11,7 @@
 
 #define WIN_WIDTH 256
 #define WIN_HEIGHT 368
-#define SCALING 2
+#define SCALING 4
 
 #define JOY_A		0x01
 #define JOY_B		0x02
@@ -161,6 +161,7 @@ void	nes_load_cartridge(t_nes *nes, t_cart *cart);
 
 const char	*get_ppureg_str(PPUReg reg);
 void		map_ppu_nametables(t_ppu *ppu, int mirror_mode);
+void		get_sprite_data(t_ppu *ppu, t_sprite *sprite, uint32_t oam_index);
 uint8_t		ppu_read(t_ppu *ppu, uint16_t addr);
 void		ppu_write(t_ppu *ppu, uint16_t addr, uint8_t val);
 void		ppu_tick(t_ppu *ppu);

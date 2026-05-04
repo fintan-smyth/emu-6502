@@ -67,33 +67,34 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 	// printf("mapped: %04X reg: %02X\n", addr, reg);
 
 	switch (reg) {
-		case (PPUCTRL):
+		case (PPUCTRL): // 0x2000
 			printf("\e[31;1mError\e[m: %s: Invalid read\n", get_ppureg_str(reg));
 			exit(1);
 			break;
-		case (PPUMASK):
+		case (PPUMASK): // 0x2001
 			printf("\e[31;1mError\e[m: %s: Invalid read\n", get_ppureg_str(reg));
 			exit(1);
 			break;
-		case (PPUSTATUS):
+		case (PPUSTATUS): // 0x2002
 			data = ppu->registers[PPUSTATUS];
 			// printf("before: 0x%02X\n", ppu->registers[PPUSTATUS]);
 			SET_BIT(ppu->registers[PPUSTATUS], VBLANK_ENABLE, 0);
 			// printf("after:  0x%02X\n", ppu->registers[PPUSTATUS]);
+			// printf("\e[32;1mPPUSTATUS Read\e[m: scanline %3d cycle %3d\n", ppu->scanline, ppu->cycle);
 			ppu->w = 0;
 			break;
-		case (OAMADDR):
+		case (OAMADDR): // 0x2003
 			printf("\e[31;1mError\e[m: %s: Invalid read\n", get_ppureg_str(reg));
 			exit(1);
 			break;
-		case (OAMDATA):
+		case (OAMDATA): // 0x2004
 			data = ppu->oam[ppu->oam_addr];
 			break;
-		case (PPUSCROLL):
+		case (PPUSCROLL): // 0x2005
 			break;
-		case (PPUADDR):
+		case (PPUADDR): // 0x2006
 			break;
-		case (PPUDATA):
+		case (PPUDATA): // 0x2007
 			data = ppu->readbuf;
 			ppu->readbuf= ppu_read(ppu, ppu->v & 0x3FFF);
 			if ((ppu->v & 0x3FFF) >= 0x3F00)
@@ -128,7 +129,7 @@ void	cpu_ppu_reg_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 			exit(1);
 			break;
 		case (OAMADDR): // 0x2003
-			ppu->registers[OAMADDR] = val;
+			ppu->oam_addr = val;
 			break;
 		case (OAMDATA): // 0x2004
 			ppu->oam[ppu->oam_addr++] = val;
@@ -275,6 +276,8 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 			// cpu->catchup_cycles += 1;
 			// ppu_catchup(nes);
 			ppu_tick_for(ppu, 3);
+			if (ppu->oam_addr != 0)
+				printf("\e[31;1mDMA initiated\e[m OAMADDR: 0x%02X scanline: %d cycle: %d\n", ppu->oam_addr, ppu->scanline, ppu->cycle);
 			for (int i = 0; i < 256; i++)
 			{
 				// cpu->catchup_cycles += 2;
