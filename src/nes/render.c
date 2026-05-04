@@ -64,6 +64,7 @@ void update_frame(t_nes *nes)
 	t_ppu *ppu = &nes->ppu;
 
 	handle_player_input(nes);
+	// printf("updating frame...\n");
 	draw_pattern_table(ppu, 0, 0, 240);
 	draw_pattern_table(ppu, 1, 128, 240);
 	UpdateTexture(ppu->screen_tex, ppu->screenbuf);

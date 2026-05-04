@@ -11,7 +11,7 @@
 
 #define WIN_WIDTH 256
 #define WIN_HEIGHT 368
-#define SCALING 4
+#define SCALING 2
 
 #define JOY_A		0x01
 #define JOY_B		0x02
@@ -26,6 +26,15 @@
 #define SPRITE_0_HIT	0x40
 #define VBLANK_ACTIVE	0x80
 #define VBLANK_ENABLE	0x80
+
+#define PPUMASK_GREY	0x01
+#define PPUMASK_BG_LEFT	0x02
+#define PPUMASK_SP_LEFT	0x04
+#define PPUMASK_BG		0x08
+#define PPUMASK_SP		0x10
+#define PPUMASK_RED		0x20
+#define PPUMASK_GREEN	0x40
+#define PPUMASK_BLUE 	0x80
 
 struct nes_header {
 	uint8_t name[4];
@@ -117,6 +126,7 @@ typedef struct s_ppu
 	uint8_t		w;
 	uint8_t		readbuf;
 	bool		*nmi_pin;
+	bool		nmi_state_prev;
 	uint8_t		vram[0x800];
 	uint8_t		oam[0x100];
 	uint8_t		oam_addr;
@@ -155,6 +165,7 @@ uint8_t		ppu_read(t_ppu *ppu, uint16_t addr);
 void		ppu_write(t_ppu *ppu, uint16_t addr, uint8_t val);
 void		ppu_tick(t_ppu *ppu);
 void		ppu_tick_for(t_ppu *ppu, uint32_t n_ticks);
+void		ppu_catchup(t_nes *nes);
 
 uint8_t		nes_step(t_nes *nes);
 uint64_t	nes_run_for(t_nes *nes, uint64_t n_cycles);

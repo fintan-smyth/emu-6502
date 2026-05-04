@@ -2,6 +2,7 @@
 #include "nes.h"
 #include <raylib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 
@@ -282,11 +283,12 @@ uint8_t	get_palette_id(t_ppu *ppu)
 	return (attr_byte >> shift) & 0x03;
 }
 
-uint8_t get_pixel_color(t_ppu *ppu, uint8_t pixel, uint8_t palette_id, bool *bg_opaque)
+uint8_t get_bg_pixel_color(t_ppu *ppu, uint8_t pixel, uint8_t palette_id, bool *bg_opaque, uint32_t x_pos)
 {
 	uint8_t	col_index;
+	bool draw_bg = (ppu->registers[PPUMASK] & PPUMASK_BG_LEFT) || (x_pos > 7);
 
-	if (pixel == 0)
+	if (pixel == 0 || !draw_bg)
 	{
 		col_index = ppu_read(ppu, 0x3F00);
 		*bg_opaque = false;
@@ -303,6 +305,9 @@ uint8_t get_pixel_color(t_ppu *ppu, uint8_t pixel, uint8_t palette_id, bool *bg_
 
 void	get_sprite_pixel(t_ppu *ppu, uint32_t x_pos, bool bg_opaque, uint8_t *col_index)
 {
+	if (!(ppu->registers[PPUMASK] & PPUMASK_SP_LEFT) && (x_pos < 8))
+		return ;
+
 	for (uint8_t i = 0; i < ppu->secondary_count; i++)
 	{
 		t_sprite *sprite = &ppu->secondary_oam[i];
@@ -347,7 +352,7 @@ void	ppu_draw_tile_row(t_ppu *ppu)
 
 	fetch_tile_row(ppu, pixbuf, table_select, tile_id, fine_y);
 
-	for (int i = 0; i < 8; i++)
+	for (uint32_t i = 0; i < 8; i++)
 	{
 		bool		bg_opaque;
 		uint32_t	x = (ppu->cycle - 8) + i - ppu->x;
@@ -355,11 +360,11 @@ void	ppu_draw_tile_row(t_ppu *ppu)
 		if (x > 255)
 			continue ;
 
-		uint8_t col_index = get_pixel_color(ppu, pixbuf[i], palette_id, &bg_opaque);
+		uint8_t col_index = get_bg_pixel_color(ppu, pixbuf[i], palette_id, &bg_opaque, x);
 
 		get_sprite_pixel(ppu, x, bg_opaque, &col_index);
 
-		if (ppu->registers[PPUMASK] & BIT_0)
+		if (ppu->registers[PPUMASK] & PPUMASK_GREY)
 			col_index &= 0x30;
 		// uint32_t col = palette[col_index & 0x3F];
 		Color col = palette_alt[col_index & 0x3F];
@@ -450,17 +455,8 @@ void	find_scanline_sprites(t_ppu *ppu)
 
 void ppu_tick(t_ppu *ppu)
 {
-	ppu->cycle++;
-	if (ppu->cycle == 341)
-	{
-		ppu->cycle = 0;
-		ppu->scanline++;
-		if (ppu->scanline == 262)
-			ppu->scanline = 0;
-	}
-
 	// if ((ppu->scanline < 240 || ppu->scanline == 261))
-	if ((ppu->scanline < 240 || ppu->scanline == 261) && (ppu->registers[PPUMASK] & 0x18))
+	if ((ppu->scanline < 240 || ppu->scanline == 261) && (ppu->registers[PPUMASK] & (PPUMASK_BG | PPUMASK_SP)))
 	{
 		if (ppu->cycle % 8 == 0 && ppu->cycle >= 1 && ppu->cycle <= 264)
 		{
@@ -473,8 +469,8 @@ void ppu_tick(t_ppu *ppu)
 
 		else if (ppu->cycle == 265)
 		{
-			ppu->v = (ppu->v & ~0x41F) | (ppu->t & 0x41F);
 			find_scanline_sprites(ppu);
+			ppu->v = (ppu->v & ~0x41F) | (ppu->t & 0x41F);
 		}
 		else if (ppu->cycle <= 320)
 			ppu->registers[OAMADDR] = 0;
@@ -482,33 +478,55 @@ void ppu_tick(t_ppu *ppu)
 		// if (ppu->cycle == 328 || ppu->cycle == 336)
 		// 	ppu_increment_x(ppu);
 
-		if (ppu->scanline == 261)
+		if (ppu->scanline == 261 && ppu->cycle >= 280 && ppu->cycle <= 304)
 		{
-			if (ppu->cycle == 1)
-			{
-				ppu->registers[PPUSTATUS] &= ~VBLANK_ACTIVE;
-				ppu->registers[PPUSTATUS] &= ~SPRITE_0_HIT;
-				ppu->registers[PPUSTATUS] &= ~SPRITE_OVERFLOW;
-			}
-			if (ppu->cycle >= 280 && ppu->cycle <= 304)
-			{
-				ppu->v = (ppu->v & ~0x7BE0) | (ppu->t & 0x7BE0);
-			}
+			ppu->v = (ppu->v & ~0x7BE0) | (ppu->t & 0x7BE0);
 		}
 	}
 
 	if (ppu->scanline == 241 && ppu->cycle == 1)
 	{
 		ppu->registers[PPUSTATUS] |= VBLANK_ACTIVE;
-		if (ppu->registers[PPUCTRL] & VBLANK_ENABLE)
-			*ppu->nmi_pin = true;
+		// if (ppu->registers[PPUCTRL] & VBLANK_ENABLE)
+		// 	*ppu->nmi_pin = true;
 		update_frame(ppu->nes);
 	}
 
+	if (ppu->scanline == 261 && ppu->cycle == 1)
+	{
+		ppu->registers[PPUSTATUS] &= ~VBLANK_ACTIVE;
+		ppu->registers[PPUSTATUS] &= ~SPRITE_0_HIT;
+		ppu->registers[PPUSTATUS] &= ~SPRITE_OVERFLOW;
+	}
+
+	bool nmi_active = (ppu->registers[PPUCTRL] & VBLANK_ENABLE) && (ppu->registers[PPUSTATUS] & VBLANK_ACTIVE);
+
+	if (nmi_active && !ppu->nmi_state_prev)
+	{
+		// printf("NMI firing: scanline %3d cycle %3d\n", ppu->scanline, ppu->cycle);
+		*ppu->nmi_pin = true;
+	}
+
+	ppu->nmi_state_prev = nmi_active;
+
+	ppu->cycle++;
+	if (ppu->cycle == 341)
+	{
+		ppu->cycle = 0;
+		ppu->scanline++;
+		if (ppu->scanline == 262)
+			ppu->scanline = 0;
+	}
 }
 
 void	ppu_tick_for(t_ppu *ppu, uint32_t n_ticks)
 {
 	for (uint32_t i = 0; i < n_ticks; i++)
 		ppu_tick(ppu);
+}
+
+void	ppu_catchup(t_nes *nes)
+{
+	ppu_tick_for(&nes->ppu, nes->cpu.catchup_cycles * 3);
+	nes->cpu.catchup_cycles = 0;
 }

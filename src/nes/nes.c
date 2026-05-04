@@ -14,6 +14,7 @@ void	init_nes(t_nes *nes)
 uint8_t nes_step(t_nes *nes)
 {
 	uint8_t cycles = cpu_step(&nes->cpu);
+	nes->cpu.catchup_cycles += cycles;
 	ppu_tick_for(&nes->ppu, cycles * 3);
 
 	return cycles;

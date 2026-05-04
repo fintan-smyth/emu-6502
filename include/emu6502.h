@@ -201,6 +201,7 @@ typedef struct t_cpu
 	uint8_t		*memory;
 	size_t		memsize;
 	size_t		cycles;
+	size_t		catchup_cycles;
 	uint8_t		cycle_events;
 	bool		nmi_pending;
 	bool		irq_pending;

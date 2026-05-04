@@ -165,12 +165,16 @@ uint8_t	get_operand(t_cpu *cpu, AddrMode mode)
 
 void	push_stack(t_cpu *cpu, uint8_t val)
 {
+	if (cpu->sp == 0x00)
+		printf("stack overflow!\n");
 	uint16_t addr = 0x100 | cpu->sp--;
 	write_byte(cpu, addr, val);
 }
 
 uint8_t pop_stack(t_cpu *cpu)
 {
+	if (cpu->sp == 0xFF)
+		printf("stack overflow!\n");
 	uint16_t addr = 0x100 | ++cpu->sp;
 	return read_byte(cpu, addr);
 }

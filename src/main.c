@@ -273,7 +273,7 @@ int	main(int argc, char **argv)
 	exec_hardware_interrupt(&nes.cpu, 0xFFFC);
 	while (!WindowShouldClose())
 		nes_step(&nes);
-	// debug_loop(&nes);
+    // debug_loop(&nes);
 END:
 	free_cart(nes.cart);
 	free(nes.ppu.screenbuf);

@@ -77,7 +77,9 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 			break;
 		case (PPUSTATUS):
 			data = ppu->registers[PPUSTATUS];
-			SET_BIT(ppu->registers[PPUSTATUS], BIT_7, 0);
+			// printf("before: 0x%02X\n", ppu->registers[PPUSTATUS]);
+			SET_BIT(ppu->registers[PPUSTATUS], VBLANK_ENABLE, 0);
+			// printf("after:  0x%02X\n", ppu->registers[PPUSTATUS]);
 			ppu->w = 0;
 			break;
 		case (OAMADDR):
@@ -268,10 +270,18 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 		case (DMC_LEN):
 			return;
 		case (OAMDMA):
-			cpu->cycle_events |= CYCLE_DMA;
+			// cpu->cycle_events |= CYCLE_DMA;
 			dma_src = val << 8;
+			// cpu->catchup_cycles += 1;
+			// ppu_catchup(nes);
+			ppu_tick_for(ppu, 3);
 			for (int i = 0; i < 256; i++)
-				ppu->oam[ppu->oam_addr++] = read_byte(cpu, dma_src + i);
+			{
+				// cpu->catchup_cycles += 2;
+				ppu->oam[ppu->oam_addr++] = read_byte(cpu, dma_src + (uint8_t)i);
+				ppu_tick_for(ppu, 6);
+				// ppu_catchup(nes);
+			}
 			// printf("DMA initiated! page: 0x%02X\n", val);
 			return;
 		case (SND_CHN):
@@ -350,6 +360,6 @@ void	nes_load_cartridge(t_nes *nes, t_cart *cart)
 {
 	nes->cart = cart;
 	nes->ppu.mirroring = cart->mirroring;
-	dprintf(nes->cpu.logfd, "prg: %04zX chr: %04zX mirroring: %d is_ram: %d\n", cart->prg_banks, cart->chr_banks, cart->mirroring, cart->chr_is_ram);
+	dprintf(nes->cpu.logfd, "mapper: %d prg: %04zX chr: %04zX mirroring: %d is_ram: %d\n", cart->mapper_id, cart->prg_banks, cart->chr_banks, cart->mirroring, cart->chr_is_ram);
 	setup_mapper_pagetables(nes, cart);
 }
