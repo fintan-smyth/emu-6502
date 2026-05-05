@@ -29,10 +29,7 @@ t_cart *read_nes_cart(const char *path)
 	cart->prg_banks = hdr.prg_rom_size;
 	cart->chr_banks = hdr.chr_rom_size;
 	if (cart->chr_banks == 0)
-	{
-		cart->chr_banks = 1;
-		cart->chr_is_ram = true;
-	}
+		cart->has_chr_ram = true;
 	printf("Flags6: 0x%02X\n", hdr.flags6);
 	cart->mirroring = hdr.flags6 & 1;
 	cart->mapper_id = ((hdr.flags6 >> 4) & 0x0F) | (hdr.flags7 & 0xF0);
@@ -43,10 +40,13 @@ t_cart *read_nes_cart(const char *path)
 		lseek(fd, 512, SEEK_CUR);
 
 	cart->prg_rom = malloc(cart->prg_banks * 0x4000);
-	cart->chr_mem = calloc(0x2000 * cart->chr_banks, 1);
 	read(fd, cart->prg_rom, cart->prg_banks * 0x4000);
-	if (!cart->chr_is_ram)
-		read(fd, cart->chr_mem, cart->chr_banks * 0x2000);
+
+	if (!cart->has_chr_ram)
+	{
+		cart->chr_rom = calloc(0x2000 * cart->chr_banks, 1);
+		read(fd, cart->chr_rom, cart->chr_banks * 0x2000);
+	}
 
 	return cart;
 }
@@ -54,7 +54,7 @@ t_cart *read_nes_cart(const char *path)
 void	free_cart(t_cart *cart)
 {
 	free(cart->prg_rom);
-	free(cart->chr_mem);
+	free(cart->chr_rom);
 	free(cart);
 }
 
@@ -319,6 +319,7 @@ void	setup_nes_mappings(t_nes *nes)
 
 	// Map ppu to vram based on mirroring
 	map_ppu_nametables(&nes->ppu, nes->ppu.mirroring);
+	map_ppu_pattern_tables(nes, nes->cart);
 }
 
 void	mapper_2_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
@@ -334,6 +335,7 @@ void	mapper_2_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, ui
 		exit(2);
 	}
 	map_memory(nes->cpu.pagetable, 0x8000, 16, &cart->prg_rom[0x4000 * (bank_id)], NULL, mapper_2_write_handler);
+	cart->cur_prg_bank = bank_id;
 	(void)entry;
 	(void)addr;
 }
@@ -345,12 +347,10 @@ void	setup_mapper_pagetables(t_nes *nes, t_cart *cart)
 		case (0):
 			map_memory(nes->cpu.pagetable, 0x8000, 16, cart->prg_rom, NULL, NULL);
 			map_memory(nes->cpu.pagetable, 0xC000, 16, &cart->prg_rom[cart->prg_banks == 1 ? 0 : 0x4000], NULL, NULL);
-			map_memory(nes->ppu.pagetable, 0x0000, 8, cart->chr_mem, NULL, NULL);
 			break;
 		case (2):
-			map_memory(nes->cpu.pagetable, 0x8000, 16, cart->prg_rom, NULL, mapper_2_write_handler);
+			map_memory(nes->cpu.pagetable, 0x8000, 16, &cart->prg_rom[0x4000 * cart->cur_prg_bank], NULL, mapper_2_write_handler);
 			map_memory(nes->cpu.pagetable, 0xC000, 16, &cart->prg_rom[0x4000 * (cart->prg_banks - 1)], NULL, mapper_2_write_handler);
-			map_memory(nes->ppu.pagetable, 0x0000, 8, cart->chr_mem, NULL, passthrough_write);
 			break;
 		default:
 			printf("Mapper not handled!\n");
@@ -363,6 +363,6 @@ void	nes_load_cartridge(t_nes *nes, t_cart *cart)
 {
 	nes->cart = cart;
 	nes->ppu.mirroring = cart->mirroring;
-	dprintf(nes->cpu.logfd, "mapper: %d prg: %04zX chr: %04zX mirroring: %d is_ram: %d\n", cart->mapper_id, cart->prg_banks, cart->chr_banks, cart->mirroring, cart->chr_is_ram);
+	dprintf(nes->cpu.logfd, "mapper: %d prg: %04zX chr: %04zX mirroring: %d is_ram: %d\n", cart->mapper_id, cart->prg_banks, cart->chr_banks, cart->mirroring, cart->has_chr_ram);
 	setup_mapper_pagetables(nes, cart);
 }

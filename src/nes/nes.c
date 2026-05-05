@@ -7,7 +7,6 @@ void	init_nes(t_nes *nes)
 	nes->cpu.parent_device = nes;
 	nes->ppu.nes = nes;
 	nes->ppu.nmi_pin = &nes->cpu.nmi_pending;
-	nes->ppu.screenbuf = calloc(WIN_HEIGHT * WIN_WIDTH, sizeof(uint32_t));
 	nes->settings.fps = 60;
 }
 

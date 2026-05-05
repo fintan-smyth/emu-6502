@@ -36,7 +36,8 @@
 #define PPUMASK_GREEN	0x40
 #define PPUMASK_BLUE 	0x80
 
-struct nes_header {
+struct nes_header
+{
 	uint8_t name[4];
 	uint8_t prg_rom_size;
 	uint8_t chr_rom_size;
@@ -51,14 +52,15 @@ struct nes_header {
 typedef struct s_cart
 {
 	uint8_t	*prg_rom;
-	uint8_t	*chr_mem;
+	uint8_t	*chr_rom;
+	uint8_t	chr_ram[0x2000];
 	size_t	prg_banks;
 	size_t	chr_banks;
 	uint8_t	cur_prg_bank;
 	uint8_t	cur_chr_bank;
 	uint8_t	mapper_id;
 	uint8_t	mirroring;
-	bool	chr_is_ram;
+	bool	has_chr_ram;
 } t_cart;
 
 typedef enum e_ppureg
@@ -147,7 +149,7 @@ struct s_nes
 	uint8_t	joy_state[2];
 	uint8_t	joy_shift[2];
 	uint8_t	ram[0x800];
-	uint8_t	dump[0x400];
+	// uint8_t	dump[0x400];
 	struct {
 		uint8_t	pattern_palette;
 		int32_t	fps;
@@ -160,6 +162,7 @@ void	free_cart(t_cart *cart);
 void	nes_load_cartridge(t_nes *nes, t_cart *cart);
 
 const char	*get_ppureg_str(PPUReg reg);
+void		map_ppu_pattern_tables(t_nes *nes, t_cart *cart);
 void		map_ppu_nametables(t_ppu *ppu, int mirror_mode);
 void		get_sprite_data(t_ppu *ppu, t_sprite *sprite, uint32_t oam_index);
 uint8_t		ppu_read(t_ppu *ppu, uint16_t addr);
@@ -180,6 +183,8 @@ void	draw_tile(t_ppu *ppu, uint8_t table, uint8_t tile_id, int x, int y);
 void	draw_pattern_table(t_ppu *ppu, uint8_t table, int posX, int posY);
 void	update_frame(t_nes *nes);
 
+void	save_game(t_nes *nes);
+void	load_save_game(t_nes *nes);
 void	handle_player_input(t_nes *nes);
 
 #endif

@@ -52,4 +52,9 @@ void	handle_player_input(t_nes *nes)
 			nes->settings.fps = 240;
 		SetTargetFPS(nes->settings.fps);
 	}
+
+	if (IsKeyPressed(KEY_X))
+		save_game(nes);
+	if (IsKeyPressed(KEY_Z))
+		load_save_game(nes);
 }

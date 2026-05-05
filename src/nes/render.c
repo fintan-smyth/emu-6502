@@ -10,6 +10,7 @@ void init_raylib(t_nes *nes)
 	SetTargetFPS(nes->settings.fps);
 	Image blankImage = GenImageColor(WIN_WIDTH, WIN_HEIGHT, BLANK);
     nes->ppu.screen_tex = LoadTextureFromImage(blankImage);
+	nes->ppu.screenbuf = calloc(WIN_HEIGHT * WIN_WIDTH, sizeof(uint32_t));
     UnloadImage(blankImage);
 }
 

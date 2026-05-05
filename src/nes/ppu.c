@@ -208,6 +208,14 @@ void	ppu_palette_page_write(struct pt_entry *entry, void *arg, uint16_t addr, ui
 	entry->memory[addr] = val;
 }
 
+void	map_ppu_pattern_tables(t_nes *nes, t_cart *cart)
+{
+	if (cart->has_chr_ram)
+		map_memory(nes->ppu.pagetable, 0x0000, 8, cart->chr_ram, NULL, passthrough_write);
+	else
+		map_memory(nes->ppu.pagetable, 0x0000, 8, cart->chr_rom, NULL, NULL);
+}
+
 void map_ppu_nametables(t_ppu *ppu, int mirror_mode)
 {
 	switch (mirror_mode) {
