@@ -239,6 +239,26 @@ void map_ppu_nametables(t_ppu *ppu, int mirror_mode)
 			map_memory(ppu->pagetable, 0x3800, 1, ppu->vram, NULL, passthrough_write);
 			map_memory(ppu->pagetable, 0x3C00, 1, &ppu->vram[0x400], ppu_palette_page_read, ppu_palette_page_write);
 			break ;
+		case (MIRROR_SINGLE_LOW):
+			map_memory(ppu->pagetable, 0x2000, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2400, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2800, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2C00, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x3000, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x3400, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x3800, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x3C00, 1, ppu->vram, NULL, passthrough_write);
+			break ;
+		case (MIRROR_SINGLE_HIGH):
+			map_memory(ppu->pagetable, 0x2000, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2400, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2800, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2C00, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x3000, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x3400, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x3800, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x3C00, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			break ;
 		default:
 			printf("\e[31;1mERROR\e[m: invalid mirror mode\n");
 			exit(2);

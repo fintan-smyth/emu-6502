@@ -464,7 +464,8 @@ void print_debug_view(t_cpu *cpu, uint16_t pc)
 	print_stack(cpu);
 	print_zeropage(cpu);
 	printf("nmi: %d irq: %d\n", cpu->nmi_pending, cpu->irq_pending);
-	t_ppu *ppu = &((t_nes *)cpu->parent_device)->ppu;
+	t_nes *nes = (t_nes *)cpu->parent_device;
+	t_ppu *ppu = &nes->ppu;
 	// print_vram(ppu);
 	printf("PPUCTRL: 0x%02X PPUMASK: 0x%02X PPUSTATUS: 0x%02X ppu->v: 0x%04X ppu->t: 0x%04X\n",
 		ppu->registers[PPUCTRL], ppu->registers[PPUMASK], ppu->registers[PPUSTATUS], ppu->v, ppu->t);
@@ -472,6 +473,18 @@ void print_debug_view(t_cpu *cpu, uint16_t pc)
 	t_sprite sprite_0;
 	get_sprite_data(ppu, &sprite_0, 0);
 	printf("\e[34;1mSPRITE 0\e[m: x: %3d y: %3d tile_id: %3d attr: 0x%02X\n", sprite_0.x, sprite_0.y, sprite_0.tile_id, sprite_0.attr);
+	if (nes->cart->mapper_id == 1)
+	{
+		printf("\e[35;1mMMC1\e[m: CTRL: 0x%02X CHR0: 0x%02X CHR1: 0x%02X PRG: 0x%02X  SHIFT: ",
+			nes->mapper.mmc1.registers[MMC1_CTRL],
+			nes->mapper.mmc1.registers[MMC1_CHR0],
+			nes->mapper.mmc1.registers[MMC1_CHR1],
+			nes->mapper.mmc1.registers[MMC1_PRG]
+		);
+		for (int i = 4; i >= 0; i--)
+			printf("%d", (nes->mapper.mmc1.shift >> i) & 1);
+		printf("\n");
+	}
 }
 
 void log_instr(int fd, t_cpu *cpu, const t_instruct *instr)

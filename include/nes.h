@@ -8,10 +8,12 @@
 
 #define MIRROR_HORIZONTAL 0
 #define MIRROR_VERTICAL 1
+#define MIRROR_SINGLE_LOW 2
+#define MIRROR_SINGLE_HIGH 3
 
 #define WIN_WIDTH 256
 #define WIN_HEIGHT 368
-#define SCALING 4
+#define SCALING 3
 
 #define JOY_A		0x01
 #define JOY_B		0x02
@@ -51,13 +53,12 @@ struct nes_header
 
 typedef struct s_cart
 {
+	char	title[256];
 	uint8_t	*prg_rom;
 	uint8_t	*chr_rom;
 	uint8_t	chr_ram[0x2000];
 	size_t	prg_banks;
 	size_t	chr_banks;
-	uint8_t	cur_prg_bank;
-	uint8_t	cur_chr_bank;
 	uint8_t	mapper_id;
 	uint8_t	mirroring;
 	bool	has_chr_ram;
@@ -140,6 +141,40 @@ typedef struct s_ppu
 	Texture2D	screen_tex;
 } t_ppu;
 
+enum
+{
+	MMC1_CTRL,
+	MMC1_CHR0,
+	MMC1_CHR1,
+	MMC1_PRG,
+};
+
+union mapper
+{
+	struct
+	{
+		uint8_t shift;
+		uint8_t	registers[4];
+	}	mmc1;
+	struct
+	{
+		uint8_t	cur_prg_bank;
+		uint8_t	cur_chr_bank;
+	}	uxrom;
+	struct
+	{
+
+	}	cnrom;
+	struct
+	{
+
+	}	mmc3;
+	struct
+	{
+
+	}	mmc5;
+};
+
 struct s_nes
 {
 	t_cpu	cpu;
@@ -150,6 +185,7 @@ struct s_nes
 	uint8_t	joy_shift[2];
 	uint8_t	ram[0x800];
 	// uint8_t	dump[0x400];
+	union mapper	mapper;
 	struct {
 		uint8_t	pattern_palette;
 		int32_t	fps;
@@ -164,6 +200,8 @@ void	nes_load_cartridge(t_nes *nes, t_cart *cart);
 const char	*get_ppureg_str(PPUReg reg);
 void		map_ppu_pattern_tables(t_nes *nes, t_cart *cart);
 void		map_ppu_nametables(t_ppu *ppu, int mirror_mode);
+void		apply_nes_mmap(t_nes *nes);
+void		apply_mapper_mmap(t_nes *nes, t_cart *cart);
 void		get_sprite_data(t_ppu *ppu, t_sprite *sprite, uint32_t oam_index);
 uint8_t		ppu_read(t_ppu *ppu, uint16_t addr);
 void		ppu_write(t_ppu *ppu, uint16_t addr, uint8_t val);
@@ -186,5 +224,9 @@ void	update_frame(t_nes *nes);
 void	save_game(t_nes *nes);
 void	load_save_game(t_nes *nes);
 void	handle_player_input(t_nes *nes);
+
+// Mappers
+
+void	uxrom_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val);
 
 #endif
