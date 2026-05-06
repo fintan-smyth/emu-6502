@@ -108,19 +108,19 @@ void	cpu_ppu_reg_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 		case (PPUSCROLL): // 0x2005
 			if (ppu->w == 0)
 			{
-				ppu->w = 1;
-				// Sets x to low 3 bits of val;
+				// Sets Fine X to low 3 bits of val;
 				ppu->x = val & 0x07;
-				// Sets bits 0-4 of t to high 5 bits of val
+				// Sets Coarse X (bits 0-4 of t) to high 5 bits of val
 				ppu->t = (ppu->t & ~0x1F) | (val >> 3);
+				ppu->w = 1;
 			}
 			else
 			{
-				ppu->w = 0;
-				// Sets bits 12-14 of t to low 3 bits of val
+				// Sets Fine Y (bits 12-14 of t) to low 3 bits of val
 				ppu->t = (ppu->t & ~(0x07 << 12)) | ((val & 0x07) << 12);
-				// Sets bits 5-9 of t to high 5 bits of val
-				ppu->t = (ppu->t & ~(0x1F << 5)) | (val >> 3);
+				// Sets Coarse Y (bits 5-9 of t) to high 5 bits of val
+				ppu->t = (ppu->t & ~(0x1F << 5)) | ((val & 0xF8) << 2);
+				ppu->w = 0;
 			}
 			// printf("PPUSCROLL write: 0x%02X ppu->t: 0x%04X\n", val, ppu->t);
 			break;
@@ -134,7 +134,7 @@ void	cpu_ppu_reg_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 			else
 			{
 				ppu->w = 0;
-				// Sets low byte of to to val
+				// Sets low byte of t to to val
 				ppu->t = (ppu->t & 0xFF00) | val;
 				ppu->v = ppu->t;
 			}
