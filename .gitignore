@@ -62,3 +62,5 @@ nestest*
 *.nes
 sprite_hit*
 tests*
+
+.savedata_*

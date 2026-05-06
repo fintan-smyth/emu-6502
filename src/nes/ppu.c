@@ -210,10 +210,10 @@ void	ppu_palette_page_write(struct pt_entry *entry, void *arg, uint16_t addr, ui
 
 void	map_ppu_pattern_tables(t_nes *nes, t_cart *cart)
 {
-	if (cart->has_chr_ram)
-		map_memory(nes->ppu.pagetable, 0x0000, 8, cart->chr_ram, NULL, passthrough_write);
-	else
-		map_memory(nes->ppu.pagetable, 0x0000, 8, cart->chr_rom, NULL, NULL);
+	void	(*write_handler)(struct pt_entry *, void *, uint16_t, uint8_t) = (cart->chr_rom_banks > 0) ? NULL : passthrough_write;
+	uint8_t	*memory = cart->chr_rom_banks > 0 ? cart->chr_rom : cart->chr_ram;
+
+	map_memory(nes->ppu.pagetable, 0x0000, 8, memory, NULL, write_handler);
 }
 
 void map_ppu_nametables(t_ppu *ppu, int mirror_mode)
@@ -540,7 +540,7 @@ void ppu_tick(t_ppu *ppu)
 		if (ppu->cycle % 8 == 0 && ppu->cycle >= 1 && ppu->cycle <= 264)
 		{
 			ppu_draw_tile_row(ppu);
-			if (ppu->cycle < 264)
+			// if (ppu->cycle < 264)
 				ppu_increment_x(ppu);
 			if (ppu->cycle == 264)
 				ppu_increment_y(ppu);

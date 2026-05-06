@@ -1166,7 +1166,8 @@ uint8_t	handle_cycles(t_cpu *cpu, const t_instruct *instr)
 uint8_t	execute_instr(t_cpu *cpu, const t_instruct *instr)
 {
 	#ifdef NES_MODE
-		// log_instr(cpu->logfd, cpu, instr);
+	// if (cpu->cycles >= 17629752)
+	// log_instr(cpu->logfd, cpu, instr);
 	#endif
 
 	cpu->cycle_events = 0;

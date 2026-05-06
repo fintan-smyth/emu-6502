@@ -13,7 +13,7 @@
 
 #define WIN_WIDTH 256
 #define WIN_HEIGHT 368
-#define SCALING 3
+#define SCALING 2
 
 #define JOY_A		0x01
 #define JOY_B		0x02
@@ -38,9 +38,9 @@
 #define PPUMASK_GREEN	0x40
 #define PPUMASK_BLUE 	0x80
 
-struct nes_header
+struct nes_1_header
 {
-	uint8_t name[4];
+	uint8_t magic[4];
 	uint8_t prg_rom_size;
 	uint8_t chr_rom_size;
 	uint8_t flags6;
@@ -51,17 +51,48 @@ struct nes_header
 	uint8_t padding[5];
 };
 
+struct nes_2_header
+{
+	uint8_t magic[4];
+	uint8_t prg_rom_size;
+	uint8_t chr_rom_size;
+	uint8_t flags6;
+	uint8_t flags7;
+	uint8_t mapper_extra;
+	uint8_t rom_msb;
+	uint8_t prg_ram_size;
+	uint8_t chr_ram_size;
+	uint8_t timing;
+	uint8_t type_info;
+	uint8_t misc_roms;
+	uint8_t expansion_device;
+};
+
+typedef enum Mapper
+{
+	NROM = 0,
+	MMC1,
+	UxROM,
+	CNROM,
+	MMC3,
+	MMC5,
+} MapperID;
+
 typedef struct s_cart
 {
-	char	title[256];
-	uint8_t	*prg_rom;
-	uint8_t	*chr_rom;
-	uint8_t	chr_ram[0x2000];
-	size_t	prg_banks;
-	size_t	chr_banks;
-	uint8_t	mapper_id;
-	uint8_t	mirroring;
-	bool	has_chr_ram;
+	char		title[256];
+	uint8_t		*prg_rom;
+	uint8_t		*chr_rom;
+	uint8_t		*prg_ram;
+	uint8_t		*chr_ram;
+	size_t		prg_rom_banks;
+	size_t		chr_rom_banks;
+	size_t		prg_ram_banks;
+	size_t		chr_ram_banks;
+	MapperID	mapper_id;
+	uint8_t		submapper;
+	uint8_t		header_type;
+	uint8_t		mirroring;
 } t_cart;
 
 typedef enum e_ppureg
@@ -193,6 +224,8 @@ struct s_nes
 };
 
 void	init_nes(t_nes *nes);
+void	apply_nes_mmap(t_nes *nes);
+
 t_cart	*read_nes_cart(const char *path);
 void	free_cart(t_cart *cart);
 void	nes_load_cartridge(t_nes *nes, t_cart *cart);
@@ -200,8 +233,6 @@ void	nes_load_cartridge(t_nes *nes, t_cart *cart);
 const char	*get_ppureg_str(PPUReg reg);
 void		map_ppu_pattern_tables(t_nes *nes, t_cart *cart);
 void		map_ppu_nametables(t_ppu *ppu, int mirror_mode);
-void		apply_nes_mmap(t_nes *nes);
-void		apply_mapper_mmap(t_nes *nes, t_cart *cart);
 void		get_sprite_data(t_ppu *ppu, t_sprite *sprite, uint32_t oam_index);
 uint8_t		ppu_read(t_ppu *ppu, uint16_t addr);
 void		ppu_write(t_ppu *ppu, uint16_t addr, uint8_t val);
@@ -228,5 +259,7 @@ void	handle_player_input(t_nes *nes);
 // Mappers
 
 void	uxrom_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val);
+void	init_mapper_mmap(t_nes *nes, t_cart *cart);
+void	refresh_mapper_mmap(t_nes *nes, t_cart *cart);
 
 #endif
