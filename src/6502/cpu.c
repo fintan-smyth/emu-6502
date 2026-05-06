@@ -2,22 +2,21 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 
 void	map_memory(struct pt_entry *pagetable, uint16_t addr, uint8_t pages,
 				uint8_t *memory, void *read_handler, void *write_handler)
 {
 	uint8_t pageno = addr >> 10;
+	// memset(&pagetable[pageno], 0, sizeof(struct pt_entry) * pages);
 	for (uint8_t i = 0; i < pages; i++)
 	{
 		struct pt_entry *entry = &pagetable[pageno + i];
 
-		if (memory)
-			entry->memory = &memory[i * 0x400];
-		if (read_handler)
-			entry->read_handler = read_handler;
-		if (write_handler)
-			entry->write_handler = write_handler;
+		entry->memory = (memory) ? &memory[i * 0x400] : NULL;
+		entry->read_handler = read_handler;
+		entry->write_handler = write_handler;
 	}
 }
 
@@ -30,7 +29,11 @@ uint8_t	read_byte(t_cpu *cpu, size_t addr)
 	if (entry->read_handler)
 		return entry->read_handler(entry, cpu, addr);
 
-	return entry->memory[addr & 0x03FF];
+	if (entry->memory)
+		return entry->memory[addr & 0x03FF];
+
+	// Simulate open bus
+	return (addr >> 8) & 0xFF;
 }
 
 uint16_t	read_word(t_cpu *cpu, size_t addr)
