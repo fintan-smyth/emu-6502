@@ -32,6 +32,7 @@ void	load_save_game(t_nes *nes)
 	t_cart *cart = nes->cart;
 	uint32_t *screenbufptr = nes->ppu.screenbuf;
 	Texture2D screen_tex = nes->ppu.screen_tex;
+	AudioStream stream = nes->apu.stream;
 	read(fd, nes, sizeof(t_nes));
 	if (cart->prg_ram_banks > 0)
 		read(fd, cart->prg_ram, 0x2000 * cart->prg_ram_banks);
@@ -40,6 +41,7 @@ void	load_save_game(t_nes *nes)
 	close(fd);
 	nes->ppu.screenbuf = screenbufptr;
 	nes->ppu.screen_tex = screen_tex;
+	nes->apu.stream = stream;
 	init_nes(nes);
 	// nes_load_cartridge(nes, cart);
 	nes->cart = cart;

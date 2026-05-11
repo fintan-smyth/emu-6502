@@ -1,6 +1,8 @@
 #include "nes.h"
 #include "emu6502.h"
+#include <raylib.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 void	init_nes(t_nes *nes)
 {
@@ -15,6 +17,7 @@ uint8_t nes_step(t_nes *nes)
 	uint8_t cycles = cpu_step(&nes->cpu);
 	nes->cpu.catchup_cycles += cycles;
 	ppu_tick_for(&nes->ppu, cycles * 3);
+	apu_tick_for(&nes->apu, cycles);
 
 	return cycles;
 }
@@ -28,6 +31,11 @@ uint64_t nes_run_for(t_nes *nes, uint64_t n_cycles)
 
 	return cycles - n_cycles;
 }
+
+// void	game_loop(t_nes *nes)
+// {
+//
+// }
 
 uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 {
@@ -154,7 +162,7 @@ uint8_t cpu_io_page_read(struct pt_entry *entry, void *arg, uint16_t addr)
 	t_cpu	*cpu = arg;
 	t_nes	*nes = (t_nes *)cpu->parent_device;
 	// t_ppu	*ppu = &((t_nes *)cpu->parent_device)->ppu;
-	uint8_t	out = 0;
+	uint8_t	out = (addr >> 8) & 0xFF;
 
 	addr &= 0xFFF;
 	if (addr > 0x17)
@@ -193,55 +201,21 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 	t_cpu		*cpu = arg;
 	t_nes		*nes = (t_nes *)cpu->parent_device;
 	t_ppu		*ppu = &nes->ppu;
+	t_apu		*apu = &nes->apu;
 	uint16_t	dma_src = 0;
 
 	addr &= 0xFFF;
-	if (addr > 0x17)
+	if (addr >= IOREG_MAX)
 		return ;
 
-	IOReg reg = addr & 0xFFF;
-	switch (reg) {
-		case (SQ1_VOL):
-			return;
-		case (SQ1_SWEEP):
-			return;
-		case (SQ1_LO):
-			return;
-		case (SQ1_HI):
-			return;
-		case (SQ2_VOL):
-			return;
-		case (SQ2_SWEEP):
-			return;
-		case (SQ2_LO):
-			return;
-		case (SW2_HI):
-			return;
-		case (TRI_LINEAR):
-			return;
-		case (UNUSED_09):
-			return;
-		case (TRI_LO):
-			return;
-		case (TRI_HI):
-			return;
-		case (NOISE_VOL):
-			return;
-		case (UNUSED_0D):
-			return;
-		case (NOISE_LO):
-			return;
-		case (NOISE_HI):
-			return;
-		case (DMC_FREQ):
-			return;
-		case (DMC_RAW):
-			return;
-		case (DMC_START):
-			return;
-		case (DMC_LEN):
-			return;
-		case (OAMDMA):
+	if (addr <= DMC_LEN)
+	{
+		handle_apu_writes(apu, addr, val);
+		return ;
+	}
+	// IOReg reg = addr & 0xFF;
+	switch (addr) {
+		case (OAMDMA): // 0x4014
 			// cpu->cycle_events |= CYCLE_DMA;
 			dma_src = val << 8;
 			// cpu->catchup_cycles += 1;
@@ -256,11 +230,10 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 				ppu_tick_for(ppu, 6);
 				// ppu_catchup(nes);
 			}
-			// printf("DMA initiated! page: 0x%02X\n", val);
 			return;
-		case (SND_CHN):
+		case (SND_CHN): // 0x4015
 			return;
-		case (JOY1):
+		case (JOY1): // 0x4016
 			nes->joy_strobe = (val & 0x01);
 			if (nes->joy_strobe)
 			{
@@ -268,7 +241,10 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 				nes->joy_shift[1] = nes->joy_state[1];
 			}
 			return;
-		case (JOY2):
+		case (JOY2): // 0x4017
+			return;
+		default:
+			// Unreachable
 			return;
 	}
 	(void)entry;

@@ -73,10 +73,10 @@ void	passthrough_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 	(void)arg;
 }
 
-void	setup_default_pagetable(t_cpu *cpu)
-{
-	map_memory(cpu->pagetable, 0x00, 64, cpu->memory, NULL, passthrough_write);
-}
+// void	setup_default_pagetable(t_cpu *cpu)
+// {
+// 	map_memory(cpu->pagetable, 0x00, 64, cpu->memory, NULL, passthrough_write);
+// }
 
 uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 {

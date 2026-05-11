@@ -13,7 +13,12 @@
 
 #define WIN_WIDTH 256
 #define WIN_HEIGHT 368
-#define SCALING 2
+#define SCALING 4
+
+#define SAMPLE_RATE 44100
+#define SAMPLE_SIZE 16
+#define AUDIO_BUFFER_SIZE 1024
+#define CHANNELS 1
 
 #define JOY_A		0x01
 #define JOY_B		0x02
@@ -116,7 +121,7 @@ typedef enum e_ioreg
 	SQ2_VOL,
 	SQ2_SWEEP,
 	SQ2_LO,
-	SW2_HI,
+	SQ2_HI,
 	TRI_LINEAR,
 	UNUSED_09,
 	TRI_LO,
@@ -133,6 +138,7 @@ typedef enum e_ioreg
 	SND_CHN,
 	JOY1,
 	JOY2,
+	IOREG_MAX,
 }	IOReg;
 
 typedef struct s_sprite
@@ -206,10 +212,30 @@ union mapper
 	}	mmc5;
 };
 
+struct square_channel
+{
+	uint8_t		duty_mode;
+	uint8_t		duty_step;
+	uint16_t	timer_reload;
+	uint16_t	timer_tick;
+	uint8_t		volume;
+	uint8_t		length_counter;
+	bool		length_halt;
+};
+
+typedef struct s_apu
+{
+	AudioStream	stream;
+	uint32_t	cpu_cycles;
+	uint8_t		frame_count;
+	struct square_channel	square[2];
+}	t_apu;
+
 struct s_nes
 {
 	t_cpu	cpu;
 	t_ppu	ppu;
+	t_apu	apu;
 	t_cart	*cart;
 	bool	joy_strobe;
 	uint8_t	joy_state[2];
@@ -261,5 +287,10 @@ void	handle_player_input(t_nes *nes);
 void	uxrom_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val);
 void	init_mapper_mmap(t_nes *nes, t_cart *cart);
 void	refresh_mapper_mmap(t_nes *nes, t_cart *cart);
+
+
+void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val);
+void	apu_tick(t_apu *apu);
+void	apu_tick_for(t_apu *apu, uint32_t n_ticks);
 
 #endif

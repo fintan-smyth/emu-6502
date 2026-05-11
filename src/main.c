@@ -60,26 +60,26 @@ void	reset_term_settings(void)
 	term.c_lflag |= ICANON;
 	tcsetattr(fileno(stdin), TCSANOW, &term);
 }
-
-void	load_program(t_cpu *cpu, const char *path)
-{
-	struct stat statbuf;
-
-	stat(path, &statbuf);
-	size_t size = statbuf.st_size;
-	if (size > 0x10000)
-		return ;
-
-	int fd = open(path, O_RDONLY);
-	// uint8_t *buf = malloc(size);
-	// read(fd, buf, size);
-	// memcpy(&cpu->memory[0x8000], &buf[16], 0x4000);
-	// memcpy(&cpu->memory[0xC000], &buf[16], 0x4000);
-	// free(buf);
-	read(fd, cpu->memory, size);
-	// read(fd, &cpu->memory[10], size);
-	close(fd);
-}
+//
+// void	load_program(t_cpu *cpu, const char *path)
+// {
+// 	struct stat statbuf;
+//
+// 	stat(path, &statbuf);
+// 	size_t size = statbuf.st_size;
+// 	if (size > 0x10000)
+// 		return ;
+//
+// 	int fd = open(path, O_RDONLY);
+// 	// uint8_t *buf = malloc(size);
+// 	// read(fd, buf, size);
+// 	// memcpy(&cpu->memory[0x8000], &buf[16], 0x4000);
+// 	// memcpy(&cpu->memory[0xC000], &buf[16], 0x4000);
+// 	// free(buf);
+// 	read(fd, cpu->memory, size);
+// 	// read(fd, &cpu->memory[10], size);
+// 	close(fd);
+// }
 
 uint8_t read_byte_input(char *prompt)
 {
@@ -227,42 +227,21 @@ void	debug_loop(t_nes *nes)
 
 int	main(int argc, char **argv)
 {
-	// draw_palette();
-	// test_tile_fetch();
-	// exit(0);
 	t_nes nes = {};
-	uint8_t	mem[0x10000];
 	nes.cpu.logfd = open("output.log", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
 
-	nes.cpu.memory = mem;
-	nes.cpu.memsize = 0x10000;
 	nes.cpu.sp = 0xFF;
-
-	printf("mem: %ld\n", sizeof(mem));
 
 	if (argc > 2)
 		return 1;
 
-	// load_program(&nes.cpu, argv[1]);
-	// setup_default_pagetable(&nes.cpu);
-	// t_cart *cart = read_nes(argv[1]);
-	// printf("cart: %p\n", cart);
-	// exit(1);
-	// nes.cpu.pc = 0x400;
-
 	init_nes(&nes);
 	init_raylib(&nes);
+
 	t_cart *cart = read_nes_cart(argv[1]);
 	if (cart == NULL)
 		return (printf("Error loading cartridge\n"), 1);
 	nes_load_cartridge(&nes, cart);
-	// draw_tile(&nes.ppu, 0, 0, 0);
-	// draw_pattern_table(&nes.ppu, 0, 0, 0);
-	// draw_pattern_table(&nes.ppu, 1, 128, 0);
-	// UpdateTexture(nes.ppu.screen_tex, nes.ppu.screenbuf);
-	// BeginDrawing();
-	// DrawTextureEx(nes.ppu.screen_tex, (Vector2){0, 0}, 0, SCALING, WHITE);
-	// EndDrawing();
 
 	set_term_settings();
 	// bstset_word_insert(&breakpoints, 0x3373);
@@ -279,6 +258,8 @@ END:
 	free(nes.ppu.screenbuf);
 	reset_term_settings();
 	close(nes.cpu.logfd);
-	printf("cycles: %ld\n", nes.cpu.cycles);
+	StopAudioStream(nes.apu.stream);
+	UnloadAudioStream(nes.apu.stream);
+    CloseAudioDevice();
 	CloseWindow();
 }

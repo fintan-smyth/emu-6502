@@ -198,8 +198,6 @@ typedef struct t_cpu
 	uint8_t		status;
 	uint16_t	pc;
 	uint16_t	addrbus;
-	uint8_t		*memory;
-	size_t		memsize;
 	size_t		cycles;
 	size_t		catchup_cycles;
 	uint8_t		cycle_events;

@@ -4,12 +4,12 @@ SRC_DIR := ./src
 BUILD_DIR:= ./build
 INC_DIR:= ./include
 
-CFLAGS = -Wall -Wextra -I $(INC_DIR) -O0
+CFLAGS = -Wall -Wextra -I $(INC_DIR) -O2
 
 LINK_FLAGS = -lraylib
 
 DBG_FLAGS =		-g3 \
-				-fsanitize=address,undefined \
+				# -fsanitize=address,undefined \
 				# -pg \
 
 SRC =	$(SRC_DIR)/main.c \
@@ -18,6 +18,7 @@ SRC =	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/6502/display.c \
 		$(SRC_DIR)/nes/cart.c \
 		$(SRC_DIR)/nes/mappers.c \
+		$(SRC_DIR)/nes/apu.c \
 		$(SRC_DIR)/nes/ppu.c \
 		$(SRC_DIR)/nes/nes.c \
 		$(SRC_DIR)/nes/render.c \

@@ -7,10 +7,14 @@ extern const Color palette_alt[];
 void init_raylib(t_nes *nes)
 {
 	InitWindow(WIN_WIDTH * SCALING, WIN_HEIGHT * SCALING, "emu6502");
+	InitAudioDevice();
+	SetAudioStreamBufferSizeDefault(1024);
 	SetTargetFPS(nes->settings.fps);
 	Image blankImage = GenImageColor(WIN_WIDTH, WIN_HEIGHT, BLANK);
     nes->ppu.screen_tex = LoadTextureFromImage(blankImage);
 	nes->ppu.screenbuf = calloc(WIN_HEIGHT * WIN_WIDTH, sizeof(uint32_t));
+	nes->apu.stream = LoadAudioStream(SAMPLE_RATE, SAMPLE_SIZE, CHANNELS);
+	PlayAudioStream(nes->apu.stream);
     UnloadImage(blankImage);
 }
 
@@ -63,17 +67,32 @@ void	draw_pattern_table(t_ppu *ppu, uint8_t table, int posX, int posY)
 void update_frame(t_nes *nes)
 {
 	t_ppu *ppu = &nes->ppu;
+	static uint32_t wave_counter = 0;
 
 	handle_player_input(nes);
 	// printf("updating frame...\n");
 	draw_pattern_table(ppu, 0, 0, 240);
 	draw_pattern_table(ppu, 1, 128, 240);
+	// if (IsKeyDown(KEY_Q) && IsAudioStreamProcessed(nes->apu.stream))
+	// {
+	// 	int16_t samples[AUDIO_BUFFER_SIZE];
+	// 	for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
+	// 	{
+	// 		if ((wave_counter++ / 50) % 2)
+	// 			samples[i] = 1000;
+	// 		else
+	// 			samples[i] = -1000;
+	// 		if (wave_counter == 44100)
+	// 			wave_counter = 0;
+	// 	}
+	// 	UpdateAudioStream(nes->apu.stream, samples, AUDIO_BUFFER_SIZE);
+	// }
 	UpdateTexture(ppu->screen_tex, ppu->screenbuf);
 	BeginDrawing();
-	ClearBackground(BLACK);
+	// ClearBackground(BLACK);
 	// BeginBlendMode(BLEND_ALPHA);
 	DrawTextureEx(ppu->screen_tex, (Vector2){0, 0}, 0, SCALING, WHITE);
 	DrawFPS(10, 10);
-	EndBlendMode();
+	// EndBlendMode();
 	EndDrawing();
 }
