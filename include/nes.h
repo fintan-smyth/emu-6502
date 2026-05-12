@@ -11,9 +11,10 @@
 #define MIRROR_SINGLE_LOW 2
 #define MIRROR_SINGLE_HIGH 3
 
-#define WIN_WIDTH 256
-#define WIN_HEIGHT 368
-#define SCALING 4
+#define CANVAS_WIDTH 256
+#define CANVAS_HEIGHT 240
+// #define WIN_HEIGHT 368
+#define DEFAULT_SCALING 4
 
 #define SAMPLE_RATE 44100
 #define SAMPLE_SIZE 16
@@ -42,6 +43,21 @@
 #define PPUMASK_RED		0x20
 #define PPUMASK_GREEN	0x40
 #define PPUMASK_BLUE 	0x80
+
+#define PPUMASK_GREY	0x01
+#define PPUMASK_BG_LEFT	0x02
+#define PPUMASK_SP_LEFT	0x04
+#define PPUMASK_BG		0x08
+#define PPUMASK_SP		0x10
+#define PPUMASK_RED		0x20
+#define PPUMASK_GREEN	0x40
+#define PPUMASK_BLUE 	0x80
+
+#define CHANNEL_SQ1		0x01
+#define CHANNEL_SQ2		0x02
+#define CHANNEL_TRI		0x04
+#define CHANNEL_NOISE	0x08
+#define CHANNEL_DMC		0x10
 
 struct nes_1_header
 {
@@ -223,12 +239,16 @@ struct square_channel
 	bool		length_halt;
 };
 
+
+
 typedef struct s_apu
 {
 	AudioStream	stream;
 	uint32_t	cpu_cycles;
 	uint8_t		frame_count;
+	uint8_t		status;
 	struct square_channel	square[2];
+	float		fps_scale;
 }	t_apu;
 
 struct s_nes

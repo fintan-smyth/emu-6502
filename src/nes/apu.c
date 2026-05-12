@@ -13,9 +13,30 @@ static const uint8_t length_table[32] = {
     12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
 };
 
-void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val)
+// void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val)
+// {
+// 	switch (reg) {
+//
+// 		default:
+// 			// Unreachable
+// 			return;
+// 	}
+// }
+
+void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
 {
-	switch (reg) {
+	t_cpu		*cpu = arg;
+	t_nes		*nes = (t_nes *)cpu->parent_device;
+	t_ppu		*ppu = &nes->ppu;
+	t_apu		*apu = &nes->apu;
+	uint16_t	dma_src = 0;
+
+	addr &= 0xFFF;
+	if (addr >= IOREG_MAX)
+		return ;
+
+	// IOReg reg = addr & 0xFF;
+	switch (addr) {
 		case (SQ1_VOL): // 0x4000
 			apu->square[0].duty_mode = (val >> 6) & 0x03;
 			apu->square[0].volume = val & 0x0F;
@@ -29,7 +50,8 @@ void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val)
 		case (SQ1_HI): // 0x4003
 			apu->square[0].timer_reload = (apu->square[0].timer_reload & 0x00FF) | ((val & 0x07) << 8);
 			apu->square[0].duty_step = 0;
-			apu->square[0].length_counter = length_table[val >> 3];
+			if (apu->status & CHANNEL_SQ1)
+				apu->square[0].length_counter = length_table[val >> 3];
 			return;
 		case (SQ2_VOL): // 0x4004
 			apu->square[1].duty_mode = (val >> 6) & 0x03;
@@ -44,7 +66,8 @@ void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val)
 		case (SQ2_HI): // 0x4007
 			apu->square[1].timer_reload = (apu->square[1].timer_reload & 0x00FF) | ((val & 0x07) << 8);
 			apu->square[1].duty_step = 0;
-			apu->square[1].length_counter = length_table[val >> 3];
+			if (apu->status & CHANNEL_SQ2)
+				apu->square[1].length_counter = length_table[val >> 3];
 			return;
 		case (TRI_LINEAR): // 0x4008
 			return;
@@ -69,12 +92,46 @@ void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val)
 		case (DMC_START): // 0x4012
 			return;
 		case (DMC_LEN): // 0x4013
+			return;		case (OAMDMA): // 0x4014
+			// cpu->cycle_events |= CYCLE_DMA;
+			dma_src = val << 8;
+			// cpu->catchup_cycles += 1;
+			// ppu_catchup(nes);
+			ppu_tick_for(ppu, 3);
+			if (ppu->oam_addr != 0)
+				printf("\e[31;1mDMA initiated\e[m OAMADDR: 0x%02X scanline: %d cycle: %d\n", ppu->oam_addr, ppu->scanline, ppu->cycle);
+			for (int i = 0; i < 256; i++)
+			{
+				// cpu->catchup_cycles += 2;
+				ppu->oam[ppu->oam_addr++] = read_byte(cpu, dma_src + (uint8_t)i);
+				ppu_tick_for(ppu, 6);
+				// ppu_catchup(nes);
+			}
+			return;
+		case (SND_CHN): // 0x4015
+			apu->status = (apu->status & 0xE0) | (val & 0x1F);
+			if ((val & CHANNEL_SQ1) == 0)
+				apu->square[0].length_counter = 0;
+			if ((val & CHANNEL_SQ2) == 0)
+				apu->square[1].length_counter = 0;
+			return;
+		case (JOY1): // 0x4016
+			nes->joy_strobe = (val & 0x01);
+			if (nes->joy_strobe)
+			{
+				nes->joy_shift[0] = nes->joy_state[0];
+				nes->joy_shift[1] = nes->joy_state[1];
+			}
+			return;
+		case (JOY2): // 0x4017
 			return;
 		default:
 			// Unreachable
 			return;
 	}
+	(void)entry;
 }
+
 
 void	tick_square(struct square_channel *sq)
 {
@@ -118,25 +175,24 @@ void apu_tick_for(t_apu *apu, uint32_t cpu_cycles)
 		// printf("Frame count ticked!\n");
 		if (apu->frame_count % 2 == 1)
 		{
-			if (!apu->square[0].length_halt && apu->square[0].length_counter > 0)
+			if (!apu->square[0].length_halt && (apu->square[0].length_counter > 0))
 				apu->square[0].length_counter--;
-			if (!apu->square[1].length_halt && apu->square[1].length_counter > 0)
+			if (!apu->square[1].length_halt && (apu->square[1].length_counter > 0))
 				apu->square[1].length_counter--;
 		}
 	}
 
-	while (audio_timer >= 40.58)
+	while (audio_timer >= (40.58 * apu->fps_scale))
 	{
-		audio_timer -= 40.58;
+		audio_timer -= (40.58 * apu->fps_scale);
 
 		uint16_t output = 0;
-		if (duty_table[apu->square[0].duty_mode][apu->square[0].duty_step] == 1 && apu->square[0].length_counter)
+		if ((duty_table[apu->square[0].duty_mode][apu->square[0].duty_step] == 1) && apu->square[0].length_counter)
 			output = apu->square[0].volume * 300;
-		if (duty_table[apu->square[1].duty_mode][apu->square[1].duty_step] == 1 && apu->square[1].length_counter)
+		if ((duty_table[apu->square[1].duty_mode][apu->square[1].duty_step] == 1) && apu->square[1].length_counter)
 			output += apu->square[1].volume * 300;
 
-		sample_buffer[buffer_idx] = output;
-		buffer_idx++;
+		sample_buffer[buffer_idx++] = output;
 
 		if (buffer_idx == 1024)
 		{

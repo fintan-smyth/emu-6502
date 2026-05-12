@@ -6,13 +6,15 @@ extern const Color palette_alt[];
 
 void init_raylib(t_nes *nes)
 {
-	InitWindow(WIN_WIDTH * SCALING, WIN_HEIGHT * SCALING, "emu6502");
+	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+	InitWindow(CANVAS_WIDTH * DEFAULT_SCALING, CANVAS_HEIGHT * DEFAULT_SCALING, "emu6502");
+	SetWindowMinSize(CANVAS_WIDTH, CANVAS_HEIGHT);
 	InitAudioDevice();
 	SetAudioStreamBufferSizeDefault(1024);
 	SetTargetFPS(nes->settings.fps);
-	Image blankImage = GenImageColor(WIN_WIDTH, WIN_HEIGHT, BLANK);
+	Image blankImage = GenImageColor(CANVAS_WIDTH, CANVAS_HEIGHT, BLANK);
     nes->ppu.screen_tex = LoadTextureFromImage(blankImage);
-	nes->ppu.screenbuf = calloc(WIN_HEIGHT * WIN_WIDTH, sizeof(uint32_t));
+	nes->ppu.screenbuf = calloc(CANVAS_HEIGHT * CANVAS_WIDTH, sizeof(uint32_t));
 	nes->apu.stream = LoadAudioStream(SAMPLE_RATE, SAMPLE_SIZE, CHANNELS);
 	PlayAudioStream(nes->apu.stream);
     UnloadImage(blankImage);
@@ -21,7 +23,7 @@ void init_raylib(t_nes *nes)
 void	draw_pixel(t_ppu *ppu, int x, int y, uint32_t col)
 {
 	// printf("drawing (%d, %d) col: 0x%08X\n", x, y, col);
-	ppu->screenbuf[y * WIN_WIDTH + x] = col;
+	ppu->screenbuf[y * CANVAS_WIDTH + x] = col;
 }
 
 // void	draw_palette(void)
@@ -67,32 +69,39 @@ void	draw_pattern_table(t_ppu *ppu, uint8_t table, int posX, int posY)
 void update_frame(t_nes *nes)
 {
 	t_ppu *ppu = &nes->ppu;
-	static uint32_t wave_counter = 0;
+	static float scaling = DEFAULT_SCALING;
+	static int x_offset = 0;
+	static int y_offset = 0;
 
 	handle_player_input(nes);
 	// printf("updating frame...\n");
-	draw_pattern_table(ppu, 0, 0, 240);
-	draw_pattern_table(ppu, 1, 128, 240);
-	// if (IsKeyDown(KEY_Q) && IsAudioStreamProcessed(nes->apu.stream))
-	// {
-	// 	int16_t samples[AUDIO_BUFFER_SIZE];
-	// 	for (int i = 0; i < AUDIO_BUFFER_SIZE; i++)
-	// 	{
-	// 		if ((wave_counter++ / 50) % 2)
-	// 			samples[i] = 1000;
-	// 		else
-	// 			samples[i] = -1000;
-	// 		if (wave_counter == 44100)
-	// 			wave_counter = 0;
-	// 	}
-	// 	UpdateAudioStream(nes->apu.stream, samples, AUDIO_BUFFER_SIZE);
-	// }
+	// draw_pattern_table(ppu, 0, 0, 240);
+	// draw_pattern_table(ppu, 1, 128, 240);
 	UpdateTexture(ppu->screen_tex, ppu->screenbuf);
+	if (IsWindowResized())
+	{
+		int new_width = GetScreenWidth();
+		int new_height = GetScreenHeight();
+
+		float width_scale = (float)new_width / CANVAS_WIDTH;
+		float height_scale = (float)new_height / CANVAS_HEIGHT;
+
+		if (width_scale < height_scale)
+		{
+			scaling = width_scale;
+			x_offset = 0;
+			y_offset = (new_height - (scaling * CANVAS_HEIGHT)) / 2.0;
+		}
+		else
+		{
+			scaling = height_scale;
+			x_offset = (new_width - (scaling * CANVAS_WIDTH)) / 2.0;
+			y_offset = 0;
+		}
+	}
 	BeginDrawing();
-	// ClearBackground(BLACK);
-	// BeginBlendMode(BLEND_ALPHA);
-	DrawTextureEx(ppu->screen_tex, (Vector2){0, 0}, 0, SCALING, WHITE);
+	ClearBackground(BLACK);
+	DrawTextureEx(ppu->screen_tex, (Vector2){x_offset, y_offset}, 0, scaling, WHITE);
 	DrawFPS(10, 10);
-	// EndBlendMode();
 	EndDrawing();
 }

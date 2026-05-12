@@ -24,9 +24,15 @@ void	handle_player_input(t_nes *nes)
 		nes->joy_state[0] |= JOY_RIGHT;
 
 	if (IsKeyPressed(KEY_LEFT_SHIFT))
+	{
+		nes->apu.fps_scale = 2;
 		SetTargetFPS(nes->settings.fps * 2);
+	}
 	if (IsKeyReleased(KEY_LEFT_SHIFT))
+	{
+		nes->apu.fps_scale = 1;
 		SetTargetFPS(nes->settings.fps);
+	}
 
 	if (IsKeyPressed(KEY_R))
 	{

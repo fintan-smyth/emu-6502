@@ -10,6 +10,7 @@ void	init_nes(t_nes *nes)
 	nes->ppu.nes = nes;
 	nes->ppu.nmi_pin = &nes->cpu.nmi_pending;
 	nes->settings.fps = 60;
+	nes->apu.fps_scale = 1;
 }
 
 uint8_t nes_step(t_nes *nes)
@@ -196,59 +197,7 @@ uint8_t cpu_io_page_read(struct pt_entry *entry, void *arg, uint16_t addr)
 	(void)entry;
 }
 
-void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
-{
-	t_cpu		*cpu = arg;
-	t_nes		*nes = (t_nes *)cpu->parent_device;
-	t_ppu		*ppu = &nes->ppu;
-	t_apu		*apu = &nes->apu;
-	uint16_t	dma_src = 0;
-
-	addr &= 0xFFF;
-	if (addr >= IOREG_MAX)
-		return ;
-
-	if (addr <= DMC_LEN)
-	{
-		handle_apu_writes(apu, addr, val);
-		return ;
-	}
-	// IOReg reg = addr & 0xFF;
-	switch (addr) {
-		case (OAMDMA): // 0x4014
-			// cpu->cycle_events |= CYCLE_DMA;
-			dma_src = val << 8;
-			// cpu->catchup_cycles += 1;
-			// ppu_catchup(nes);
-			ppu_tick_for(ppu, 3);
-			if (ppu->oam_addr != 0)
-				printf("\e[31;1mDMA initiated\e[m OAMADDR: 0x%02X scanline: %d cycle: %d\n", ppu->oam_addr, ppu->scanline, ppu->cycle);
-			for (int i = 0; i < 256; i++)
-			{
-				// cpu->catchup_cycles += 2;
-				ppu->oam[ppu->oam_addr++] = read_byte(cpu, dma_src + (uint8_t)i);
-				ppu_tick_for(ppu, 6);
-				// ppu_catchup(nes);
-			}
-			return;
-		case (SND_CHN): // 0x4015
-			return;
-		case (JOY1): // 0x4016
-			nes->joy_strobe = (val & 0x01);
-			if (nes->joy_strobe)
-			{
-				nes->joy_shift[0] = nes->joy_state[0];
-				nes->joy_shift[1] = nes->joy_state[1];
-			}
-			return;
-		case (JOY2): // 0x4017
-			return;
-		default:
-			// Unreachable
-			return;
-	}
-	(void)entry;
-}
+void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val);
 
 void	apply_nes_mmap(t_nes *nes)
 {
