@@ -49,6 +49,7 @@ void	handle_player_input(t_nes *nes)
 		nes->settings.fps -= 10;
 		if (nes->settings.fps < 0)
 			nes->settings.fps = 0;
+		nes->apu.fps_scale = nes->settings.fps / 60.0;
 		SetTargetFPS(nes->settings.fps);
 	}
 	if (IsKeyPressed(KEY_RIGHT_BRACKET))
@@ -56,6 +57,7 @@ void	handle_player_input(t_nes *nes)
 		nes->settings.fps += 10;
 		if (nes->settings.fps > 240)
 			nes->settings.fps = 240;
+		nes->apu.fps_scale = nes->settings.fps / 60.0;
 		SetTargetFPS(nes->settings.fps);
 	}
 

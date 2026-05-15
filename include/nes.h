@@ -234,11 +234,49 @@ struct square_channel
 	uint8_t		duty_step;
 	uint16_t	timer_reload;
 	uint16_t	timer_tick;
-	uint8_t		volume;
 	uint8_t		length_counter;
-	bool		length_halt;
+	union
+	{
+		bool	envelope_loop;
+		bool	length_halt;
+	};
+	bool		envelope_enabled;
+	bool		envelope_start;
+	uint8_t		volume;
+	uint8_t		decay_level;
+	uint8_t		divider;
 };
 
+struct noise_channel
+{
+	uint16_t	shift;
+	bool		mode_flag;
+	uint16_t	timer_reload;
+	uint16_t	timer_tick;
+	uint8_t		length_counter;
+	union
+	{
+		bool	envelope_loop;
+		bool	length_halt;
+	};
+	bool		envelope_enabled;
+	bool		envelope_start;
+	uint8_t		volume;
+	uint8_t		decay_level;
+	uint8_t		divider;
+};
+
+struct triangle_channel
+{
+	uint8_t		sequence_step;
+	uint16_t	timer_reload;
+	uint16_t	timer_tick;
+	uint8_t		length_counter;
+	bool		control_flag;
+	uint8_t		linear_counter;
+    uint8_t		linear_reload;
+    bool		linear_reload_flag;
+};
 
 
 typedef struct s_apu
@@ -248,6 +286,8 @@ typedef struct s_apu
 	uint8_t		frame_count;
 	uint8_t		status;
 	struct square_channel	square[2];
+	struct triangle_channel	triangle;
+	struct noise_channel	noise;
 	float		fps_scale;
 }	t_apu;
 
@@ -309,6 +349,7 @@ void	init_mapper_mmap(t_nes *nes, t_cart *cart);
 void	refresh_mapper_mmap(t_nes *nes, t_cart *cart);
 
 
+void	init_audio_mixer();
 void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val);
 void	apu_tick(t_apu *apu);
 void	apu_tick_for(t_apu *apu, uint32_t n_ticks);

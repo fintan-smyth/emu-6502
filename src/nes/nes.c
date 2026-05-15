@@ -11,6 +11,7 @@ void	init_nes(t_nes *nes)
 	nes->ppu.nmi_pin = &nes->cpu.nmi_pending;
 	nes->settings.fps = 60;
 	nes->apu.fps_scale = 1;
+	nes->apu.noise.shift = 1;
 }
 
 uint8_t nes_step(t_nes *nes)
