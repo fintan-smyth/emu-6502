@@ -18,7 +18,6 @@ void init_raylib(t_nes *nes)
 	nes->apu.stream = LoadAudioStream(SAMPLE_RATE, SAMPLE_SIZE, CHANNELS);
 	PlayAudioStream(nes->apu.stream);
     UnloadImage(blankImage);
-	init_audio_mixer();
 }
 
 void	draw_pixel(t_ppu *ppu, int x, int y, uint32_t col)

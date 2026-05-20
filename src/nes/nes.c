@@ -12,6 +12,7 @@ void	init_nes(t_nes *nes)
 	nes->settings.fps = 60;
 	nes->apu.fps_scale = 1;
 	nes->apu.noise.shift = 1;
+	nes->apu.square[0].sweep.up_fix = 1;
 }
 
 uint8_t nes_step(t_nes *nes)

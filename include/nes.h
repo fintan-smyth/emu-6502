@@ -245,6 +245,16 @@ struct square_channel
 	uint8_t		volume;
 	uint8_t		decay_level;
 	uint8_t		divider;
+	struct
+	{
+		bool	enabled;
+		bool	negate;
+		bool	reload;
+		uint8_t	divider;
+		uint8_t	divider_period;
+		uint8_t	shift;
+		uint8_t	up_fix; // SQ1 is wired in one's complement - This value is used to fix the different maths
+	}	sweep;
 };
 
 struct noise_channel
@@ -349,7 +359,6 @@ void	init_mapper_mmap(t_nes *nes, t_cart *cart);
 void	refresh_mapper_mmap(t_nes *nes, t_cart *cart);
 
 
-void	init_audio_mixer();
 void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val);
 void	apu_tick(t_apu *apu);
 void	apu_tick_for(t_apu *apu, uint32_t n_ticks);

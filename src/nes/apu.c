@@ -1,5 +1,6 @@
 #include "nes.h"
 #include <stdint.h>
+#include <sys/types.h>
 
 static const uint8_t duty_table[4][8] = {
     {0, 1, 0, 0, 0, 0, 0, 0},
@@ -22,34 +23,6 @@ static const uint16_t noise_timer_table[16] = {
     4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
 };
 
-static float mix_sq_table[31] = {};
-static float mix_tnd_table[203] = {};
-
-void	init_audio_mixer()
-{
-	mix_sq_table[0] = 0.0f;
-	for (int i = 1; i < 31; i++)
-	{
-		mix_sq_table[i] = 95.52f / ((8128.0f / (float)i) + 100);
-	}
-
-	mix_tnd_table[0] = 0.0f;
-	for (int i = 1; i < 203; i++)
-	{
-		mix_tnd_table[i] = 159.79f / (1.0f / ((float)i / 8227.0f) + 100.0f);
-	}
-}
-
-// void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val)
-// {
-// 	switch (reg) {
-//
-// 		default:
-// 			// Unreachable
-// 			return;
-// 	}
-// }
-
 void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
 {
 	t_cpu		*cpu = arg;
@@ -57,6 +30,11 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 	t_ppu		*ppu = &nes->ppu;
 	t_apu		*apu = &nes->apu;
 	uint16_t	dma_src = 0;
+	struct square_channel *sq1 = &apu->square[0];
+	struct square_channel *sq2 = &apu->square[1];
+	struct triangle_channel *tri = &apu->triangle;
+	struct noise_channel *noise = &apu->noise;
+
 
 	addr &= 0xFFF;
 	if (addr >= IOREG_MAX)
@@ -65,71 +43,81 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 	// IOReg reg = addr & 0xFF;
 	switch (addr) {
 		case (SQ1_VOL): // 0x4000
-			apu->square[0].duty_mode = (val >> 6) & 0x03;
-			apu->square[0].volume = val & 0x0F;
-			apu->square[0].length_halt = (val & 0x20) != 0;
-			apu->square[0].envelope_enabled = (val & 0x10) == 0;
+			sq1->duty_mode = (val >> 6) & 0x03;
+			sq1->volume = val & 0x0F;
+			sq1->length_halt = (val & 0x20) != 0;
+			sq1->envelope_enabled = (val & 0x10) == 0;
 			return;
 		case (SQ1_SWEEP): // 0x4001
+			sq1->sweep.enabled = (val & 0x80) != 0;
+			sq1->sweep.divider_period = (val >> 4) & 0x07;
+			sq1->sweep.negate = (val & 0x08) != 0;
+			sq1->sweep.shift = (val & 0x07);
+			sq1->sweep.reload = true;
 			return;
 		case (SQ1_LO): // 0x4002
-			apu->square[0].timer_reload = (apu->square[0].timer_reload & 0xFF00) | val;
+			sq1->timer_reload = (sq1->timer_reload & 0xFF00) | val;
 			return;
 		case (SQ1_HI): // 0x4003
-			apu->square[0].timer_reload = (apu->square[0].timer_reload & 0x00FF) | ((val & 0x07) << 8);
-			apu->square[0].duty_step = 0;
-			apu->square[0].envelope_start = true;
+			sq1->timer_reload = (sq1->timer_reload & 0x00FF) | ((val & 0x07) << 8);
+			sq1->duty_step = 0;
+			sq1->envelope_start = true;
 			if (apu->status & CHANNEL_SQ1)
-				apu->square[0].length_counter = length_table[val >> 3];
+				sq1->length_counter = length_table[val >> 3];
 			return;
 		case (SQ2_VOL): // 0x4004
-			apu->square[1].duty_mode = (val >> 6) & 0x03;
-			apu->square[1].volume = val & 0x0F;
-			apu->square[1].length_halt = (val & 0x20) != 0;
-			apu->square[1].envelope_enabled = (val & 0x10) == 0;
+			sq2->duty_mode = (val >> 6) & 0x03;
+			sq2->volume = val & 0x0F;
+			sq2->length_halt = (val & 0x20) != 0;
+			sq2->envelope_enabled = (val & 0x10) == 0;
 			return;
 		case (SQ2_SWEEP): // 0x4005
+			sq2->sweep.enabled = (val & 0x80) != 0;
+			sq2->sweep.divider_period = (val >> 4) & 0x07;
+			sq2->sweep.negate = (val & 0x08) != 0;
+			sq2->sweep.shift = (val & 0x07);
+			sq2->sweep.reload = true;
 			return;
 		case (SQ2_LO): // 0x4006
-			apu->square[1].timer_reload = (apu->square[1].timer_reload & 0xFF00) | val;
+			sq2->timer_reload = (sq2->timer_reload & 0xFF00) | val;
 			return;
 		case (SQ2_HI): // 0x4007
-			apu->square[1].timer_reload = (apu->square[1].timer_reload & 0x00FF) | ((val & 0x07) << 8);
-			apu->square[1].duty_step = 0;
-			apu->square[1].envelope_start = true;
+			sq2->timer_reload = (sq2->timer_reload & 0x00FF) | ((val & 0x07) << 8);
+			sq2->duty_step = 0;
+			sq2->envelope_start = true;
 			if (apu->status & CHANNEL_SQ2)
-				apu->square[1].length_counter = length_table[val >> 3];
+				sq2->length_counter = length_table[val >> 3];
 			return;
 		case (TRI_LINEAR): // 0x4008
-			apu->triangle.control_flag = (val & 0x80) != 0;
-			apu->triangle.linear_reload = val & 0x7F;
+			tri->control_flag = (val & 0x80) != 0;
+			tri->linear_reload = val & 0x7F;
 			return;
 		case (UNUSED_09): // 0x4009
 			return;
-		case (TRI_LO): // 0x400a
-			apu->triangle.timer_reload = (apu->triangle.timer_reload & 0xFF00) | val;
+		case (TRI_LO): // 0x400A
+			tri->timer_reload = (tri->timer_reload & 0xFF00) | val;
 			return;
-		case (TRI_HI): // 0x400b
-			apu->triangle.timer_reload = (apu->triangle.timer_reload & 0x00FF) | ((val & 0x07) << 8);
+		case (TRI_HI): // 0x400B
+			tri->timer_reload = (tri->timer_reload & 0x00FF) | ((val & 0x07) << 8);
 			if (apu->status & CHANNEL_TRI)
-				apu->triangle.length_counter = length_table[val >> 3];
-			apu->triangle.linear_reload_flag = true;
+				tri->length_counter = length_table[val >> 3];
+			tri->linear_reload_flag = true;
 			return;
-		case (NOISE_VOL): // 0x400c
-			apu->noise.length_halt = (val & 0x20) != 0;
-			apu->noise.envelope_enabled = (val & 0x10) == 0;
-			apu->noise.volume = val & 0x0F;
+		case (NOISE_VOL): // 0x400C
+			noise->length_halt = (val & 0x20) != 0;
+			noise->envelope_enabled = (val & 0x10) == 0;
+			noise->volume = val & 0x0F;
 			return;
-		case (UNUSED_0D): // 0x400d
+		case (UNUSED_0D): // 0x400D
 			return;
-		case (NOISE_LO): // 0x400e
-			apu->noise.mode_flag = (val & 0x80) != 0;
-			apu->noise.timer_reload = noise_timer_table[val & 0x0F];
+		case (NOISE_LO): // 0x400E
+			noise->mode_flag = (val & 0x80) != 0;
+			noise->timer_reload = noise_timer_table[val & 0x0F];
 			return;
-		case (NOISE_HI): // 0x400f
+		case (NOISE_HI): // 0x400F
 			if (apu->status & CHANNEL_NOISE)
-				apu->noise.length_counter = length_table[val >> 3];
-			apu->noise.envelope_start = true;
+				noise->length_counter = length_table[val >> 3];
+			noise->envelope_start = true;
 			return;
 		case (DMC_FREQ): // 0x4010
 			return;
@@ -138,7 +126,8 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 		case (DMC_START): // 0x4012
 			return;
 		case (DMC_LEN): // 0x4013
-			return;		case (OAMDMA): // 0x4014
+			return;
+		case (OAMDMA): // 0x4014
 			// cpu->cycle_events |= CYCLE_DMA;
 			dma_src = val << 8;
 			// cpu->catchup_cycles += 1;
@@ -159,13 +148,13 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 		case (SND_CHN): // 0x4015
 			apu->status = (apu->status & 0xE0) | (val & 0x1F);
 			if ((val & CHANNEL_SQ1) == 0)
-				apu->square[0].length_counter = 0;
+				sq1->length_counter = 0;
 			if ((val & CHANNEL_SQ2) == 0)
-				apu->square[1].length_counter = 0;
+				sq2->length_counter = 0;
 			if ((val & CHANNEL_TRI) == 0)
-				apu->triangle.length_counter = 0;
+				tri->length_counter = 0;
 			if ((val & CHANNEL_NOISE) == 0)
-				apu->noise.length_counter = 0;
+				noise->length_counter = 0;
 			return;
 		case (JOY1): // 0x4016
 			nes->joy_strobe = (val & 0x01);
@@ -185,7 +174,7 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 }
 
 
-void	tick_square(struct square_channel *sq)
+void	tick_square_timer(struct square_channel *sq)
 {
 	if (sq->timer_tick > 0)
 		sq->timer_tick--;
@@ -196,7 +185,7 @@ void	tick_square(struct square_channel *sq)
 	}
 }
 
-void	tick_triangle(struct triangle_channel *tri)
+void	tick_triangle_timer(struct triangle_channel *tri)
 {
 	if (tri->timer_tick > 0)
 		tri->timer_tick--;
@@ -204,12 +193,12 @@ void	tick_triangle(struct triangle_channel *tri)
 	{
 		tri->timer_tick = tri->timer_reload;
 
-		if (tri->length_counter >0 && tri->linear_counter > 0 && tri->timer_reload > 2)
+		if (tri->length_counter > 0 && tri->linear_counter > 0 && tri->timer_reload > 2)
 			tri->sequence_step = (tri->sequence_step + 1) % 32;
 	}
 }
 
-void	tick_noise(struct noise_channel *noise)
+void	tick_noise_timer(struct noise_channel *noise)
 {
 	if (noise->timer_tick > 0)
 		noise->timer_tick--;
@@ -234,12 +223,22 @@ void	apu_tick(t_apu *apu)
 
 	if (odd_cycle)
 	{
-		tick_square(&apu->square[0]);
-		tick_square(&apu->square[1]);
-		tick_noise(&apu->noise);
+		tick_square_timer(&apu->square[0]);
+		tick_square_timer(&apu->square[1]);
+		tick_noise_timer(&apu->noise);
 	}
-	tick_triangle(&apu->triangle);
+	tick_triangle_timer(&apu->triangle);
 	odd_cycle = !odd_cycle;
+}
+
+uint16_t	sweep_get_period(struct square_channel *sq)
+{
+	uint16_t change = sq->timer_reload >> sq->sweep.shift;
+
+	if (sq->sweep.negate)
+		return sq->timer_reload - change - sq->sweep.up_fix;
+
+	return sq->timer_reload + change;
 }
 
 void	square_tick_envelope(struct square_channel *square)
@@ -263,6 +262,25 @@ void	square_tick_envelope(struct square_channel *square)
 				square->decay_level = 15;
 		}
 	}
+}
+
+void	square_tick_sweep(struct square_channel *sq)
+{
+	uint16_t target_period = sweep_get_period(sq);
+
+	if (sq->sweep.divider == 0 && sq->sweep.enabled && sq->sweep.shift > 0)
+	{
+		if (sq->timer_reload >= 8 && target_period <= 0x7FF)
+			sq->timer_reload = target_period;
+	}
+
+	if (sq->sweep.divider == 0 || sq->sweep.reload)
+	{
+		sq->sweep.reload = false;
+		sq->sweep.divider = sq->sweep.divider_period;
+	}
+	else
+		sq->sweep.divider--;
 }
 
 void	noise_tick_envelope(struct noise_channel *noise)
@@ -299,11 +317,40 @@ void	triangle_tick_linear(struct triangle_channel *tri)
 		tri->linear_reload_flag = false;
 }
 
+void	tick_frame_counter(t_apu *apu)
+{
+	apu->frame_count = (apu->frame_count + 1) % 4;
+
+	square_tick_envelope(&apu->square[0]);
+	square_tick_envelope(&apu->square[1]);
+	noise_tick_envelope(&apu->noise);
+	triangle_tick_linear(&apu->triangle);
+
+	// printf("Frame count ticked!\n");
+	if (apu->frame_count % 2 == 1)
+	{
+		square_tick_sweep(&apu->square[0]);
+		square_tick_sweep(&apu->square[1]);
+
+		if (!apu->square[0].length_halt && (apu->square[0].length_counter > 0))
+			apu->square[0].length_counter--;
+		if (!apu->square[1].length_halt && (apu->square[1].length_counter > 0))
+			apu->square[1].length_counter--;
+		if (!apu->noise.length_halt && (apu->noise.length_counter > 0))
+			apu->noise.length_counter--;
+		if (!apu->triangle.control_flag && apu->triangle.length_counter > 0)
+			apu->triangle.length_counter--;
+	}
+}
+
 uint8_t square_get_output_volume(struct square_channel *square)
 {
 	uint8_t		final_volume = square->envelope_enabled ? square->decay_level : square->volume;
+	uint16_t	target_period = sweep_get_period(square);
+	bool		muted = (square->timer_reload < 8) || (target_period > 0x7FF);
+	// bool		muted = false;
 
-	if (square->length_counter > 0 && square->timer_tick >= 8
+	if (!muted && square->length_counter > 0 && square->timer_tick >= 8
 		&& duty_table[square->duty_mode][square->duty_step] == 1)
 	{
 		return final_volume;
@@ -324,14 +371,55 @@ uint8_t	noise_get_output_volume(struct noise_channel *noise)
 	return 0;
 }
 
+float	mix_channels(uint8_t sq_out, uint8_t tri_out, uint8_t noise_out, uint8_t dmc_out)
+{
+	float sq_mix = 0.0f;
+	if (sq_out > 0)
+		sq_mix = 95.88f / ( (8128.0f / (float)sq_out) + 100.0f);
+
+	float tnd_mix = 0.0f;
+	float tnd_divisor = (tri_out / 8227.0f) + (noise_out / 12241.0f) + (dmc_out / 22638.0f);
+	if (tnd_divisor > 0)
+		tnd_mix = 159.79f / ( (1.0f / tnd_divisor) + 100.0f);
+
+	return sq_mix + tnd_mix;
+	(void)dmc_out;
+}
+
+float filter_audio_mix(float audio_mix)
+{
+	const float		HPF_ALPHA = 0.99f;
+	static float	prev_raw = 0.0f;
+	static float	prev_filtered = 0.0f;
+
+	float filtered = HPF_ALPHA * (prev_filtered + audio_mix - prev_raw);
+
+	prev_raw = audio_mix;
+	prev_filtered = filtered;
+	
+	return filtered;
+}
+
+uint16_t	generate_audio_sample(t_apu *apu)
+{
+
+	uint8_t sq_out = square_get_output_volume(&apu->square[0]) + square_get_output_volume(&apu->square[1]);
+	uint8_t noise_out = noise_get_output_volume(&apu->noise);
+	uint8_t tri_out = triangle_sequence[apu->triangle.sequence_step];
+
+	// float audio_mix = (sq_out + tri_out + noise_out) / 60.0;
+	float audio_mix = mix_channels(sq_out, tri_out, noise_out, 0);
+	float filtered = filter_audio_mix(audio_mix);
+
+	return (int16_t)(filtered * 20000.0f);
+	// return (sq_out + noise_out + tri_out) * 300;
+}
+
 void apu_tick_for(t_apu *apu, uint32_t cpu_cycles)
 {
 	static double	audio_timer = 0.0;
 	static int16_t	sample_buffer[1024] = {};
 	static uint16_t	buffer_idx = 0;
-	static float	prev_raw = 0.0f;
-	static float	prev_filtered = 0.0f;
-	const float		HPF_ALPHA = 0.99f;
 
 	apu->cpu_cycles += cpu_cycles;
 	audio_timer += cpu_cycles;
@@ -342,46 +430,16 @@ void apu_tick_for(t_apu *apu, uint32_t cpu_cycles)
 	if (apu->cpu_cycles >= 7457)
 	{
 		apu->cpu_cycles -= 7457;
-		apu->frame_count = (apu->frame_count + 1) % 4;
-
-		square_tick_envelope(&apu->square[0]);
-		square_tick_envelope(&apu->square[1]);
-		noise_tick_envelope(&apu->noise);
-		triangle_tick_linear(&apu->triangle);
-
-		// printf("Frame count ticked!\n");
-		if (apu->frame_count % 2 == 1)
-		{
-			if (!apu->square[0].length_halt && (apu->square[0].length_counter > 0))
-				apu->square[0].length_counter--;
-			if (!apu->square[1].length_halt && (apu->square[1].length_counter > 0))
-				apu->square[1].length_counter--;
-			if (!apu->noise.length_halt && (apu->noise.length_counter > 0))
-				apu->noise.length_counter--;
-			if (!apu->triangle.control_flag && apu->triangle.length_counter > 0)
-				apu->triangle.length_counter--;
-		}
+		tick_frame_counter(apu);
 	}
 
 	while (audio_timer >= (40.58 * apu->fps_scale))
 	{
 		audio_timer -= (40.58 * apu->fps_scale);
 
-		uint8_t sq_out = square_get_output_volume(&apu->square[0]) + square_get_output_volume(&apu->square[1]);
-		uint8_t noise_out = noise_get_output_volume(&apu->noise);
-		uint8_t tri_out = triangle_sequence[apu->triangle.sequence_step];
-		uint8_t tnd_out = (2 * noise_out) + (3 * tri_out);
+		uint16_t output = generate_audio_sample(apu);
 
-		float audio_mix = mix_sq_table[sq_out] + mix_tnd_table[tnd_out];
-		float filtered = HPF_ALPHA * (prev_filtered + audio_mix - prev_raw);
-
-		prev_raw = audio_mix;
-		prev_filtered = filtered;
-
-		int16_t output = (int16_t)(filtered * 20000.0f);
-		// int16_t output = (sq_out + noise_out + tri_out) * 300;
 		sample_buffer[buffer_idx++] = output;
-
 		if (buffer_idx == 1024)
 		{
 			while (!IsAudioStreamProcessed(apu->stream))
