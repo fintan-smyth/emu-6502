@@ -389,15 +389,20 @@ float	mix_channels(uint8_t sq_out, uint8_t tri_out, uint8_t noise_out, uint8_t d
 float filter_audio_mix(float audio_mix)
 {
 	const float		HPF_ALPHA = 0.99f;
+	const float		LPF_ALPHA = 0.50f;
+	// const float		LPF_ALPHA = 1.00f;
 	static float	prev_raw = 0.0f;
-	static float	prev_filtered = 0.0f;
+	static float	prev_hpf = 0.0f;
+	static float	prev_lpf = 0.0f;
 
-	float filtered = HPF_ALPHA * (prev_filtered + audio_mix - prev_raw);
-
+	float hpf_out = HPF_ALPHA * (prev_hpf + audio_mix - prev_raw);
 	prev_raw = audio_mix;
-	prev_filtered = filtered;
+	prev_hpf = hpf_out;
+
+	float lpf_out = prev_lpf + LPF_ALPHA * (hpf_out - prev_lpf);
+	prev_lpf = lpf_out;
 	
-	return filtered;
+	return lpf_out;
 }
 
 uint16_t	generate_audio_sample(t_apu *apu)
@@ -407,11 +412,11 @@ uint16_t	generate_audio_sample(t_apu *apu)
 	uint8_t noise_out = noise_get_output_volume(&apu->noise);
 	uint8_t tri_out = triangle_sequence[apu->triangle.sequence_step];
 
-	// float audio_mix = (sq_out + tri_out + noise_out) / 60.0;
+	// float audio_mix = (sq_out + tri_out + noise_out) / 80.0;
 	float audio_mix = mix_channels(sq_out, tri_out, noise_out, 0);
 	float filtered = filter_audio_mix(audio_mix);
 
-	return (int16_t)(filtered * 20000.0f);
+	return (int16_t)(filtered * 24000.0f);
 	// return (sq_out + noise_out + tri_out) * 300;
 }
 
