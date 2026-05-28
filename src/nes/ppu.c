@@ -1,6 +1,7 @@
 #include "emu6502.h"
 #include "nes.h"
 #include <raylib.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -216,48 +217,55 @@ void	map_ppu_pattern_tables(t_nes *nes, t_cart *cart)
 	map_memory(nes->ppu.pagetable, 0x0000, 8, memory, NULL, write_handler);
 }
 
-void map_ppu_nametables(t_ppu *ppu, int mirror_mode)
+void	logging_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
+{
+	printf("addr: 0x%04X val: 0x%02X\n", addr, val);
+	entry->memory[addr & 0x3FF] = val;
+	(void)arg;
+}
+
+void map_ppu_nametables(t_ppu *ppu, void *read_handler, int mirror_mode)
 {
 	switch (mirror_mode) {
 		case (MIRROR_HORIZONTAL):
-			map_memory(ppu->pagetable, 0x2000, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2400, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2800, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2C00, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3000, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3400, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3800, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2000, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2400, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2800, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2C00, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3000, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3400, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3800, 1, &ppu->vram[0x400], read_handler, passthrough_write);
 			map_memory(ppu->pagetable, 0x3C00, 1, &ppu->vram[0x400], ppu_palette_page_read, ppu_palette_page_write);
 			break ;
 		case (MIRROR_VERTICAL):
-			map_memory(ppu->pagetable, 0x2000, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2400, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2800, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2C00, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3000, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3400, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3800, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2000, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2400, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2800, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2C00, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3000, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3400, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3800, 1, ppu->vram, read_handler, passthrough_write);
 			map_memory(ppu->pagetable, 0x3C00, 1, &ppu->vram[0x400], ppu_palette_page_read, ppu_palette_page_write);
 			break ;
 		case (MIRROR_SINGLE_LOW):
-			map_memory(ppu->pagetable, 0x2000, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2400, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2800, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2C00, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3000, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3400, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3800, 1, ppu->vram, NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3C00, 1, ppu->vram, NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2000, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2400, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2800, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2C00, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3000, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3400, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3800, 1, ppu->vram, read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3C00, 1, ppu->vram, read_handler, passthrough_write);
 			break ;
 		case (MIRROR_SINGLE_HIGH):
-			map_memory(ppu->pagetable, 0x2000, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2400, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2800, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x2C00, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3000, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3400, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3800, 1, &ppu->vram[0x400], NULL, passthrough_write);
-			map_memory(ppu->pagetable, 0x3C00, 1, &ppu->vram[0x400], NULL, passthrough_write);
+			map_memory(ppu->pagetable, 0x2000, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2400, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2800, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x2C00, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3000, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3400, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3800, 1, &ppu->vram[0x400], read_handler, passthrough_write);
+			map_memory(ppu->pagetable, 0x3C00, 1, &ppu->vram[0x400], read_handler, passthrough_write);
 			break ;
 		default:
 			printf("\e[31;1mERROR\e[m: invalid mirror mode\n");
@@ -505,7 +513,7 @@ void	find_scanline_sprites(t_ppu *ppu)
 		uint32_t diff = ppu->scanline - y;
 		if (diff < min_diff)
 		{
-			if (ppu->secondary_count < 0x8)
+			if (ppu->secondary_count < 8)
 			{
 				t_sprite *sprite = &ppu->secondary_oam[ppu->secondary_count];
 				get_sprite_data(ppu, sprite, i);
@@ -550,6 +558,13 @@ void ppu_tick(t_ppu *ppu)
 		{
 			ppu->v = (ppu->v & ~0x41F) | (ppu->t & 0x41F);
 			find_scanline_sprites(ppu);
+
+			if (ppu->nes->cart->mapper_id == MMC3)
+			{
+				bool sprite_a12 = (ppu->registers[PPUCTRL] & 0x08) != 0;
+				size_t cpu_cycle = ppu->total_cycles / 3;
+				mmc3_clock_a12(ppu->nes, sprite_a12, cpu_cycle);
+			}
 		}
 		if (ppu->cycle >= 265 && ppu->cycle <= 320)
 		{
@@ -557,8 +572,12 @@ void ppu_tick(t_ppu *ppu)
 			ppu->oam_addr = 0;
 		}
 
-		// if (ppu->cycle == 328 || ppu->cycle == 336)
-		// 	ppu_increment_x(ppu);
+		if (ppu->cycle == 320 && ppu->nes->cart->mapper_id == MMC3)
+		{
+			bool bg_a12 = (ppu->registers[PPUCTRL] & 0x10) != 0;
+			size_t cpu_cycle = ppu->total_cycles / 3;
+			mmc3_clock_a12(ppu->nes, bg_a12, cpu_cycle);
+		}
 
 		if (ppu->scanline == 261 && ppu->cycle >= 280 && ppu->cycle <= 304)
 		{
@@ -599,6 +618,7 @@ void ppu_tick(t_ppu *ppu)
 		if (ppu->scanline == 262)
 			ppu->scanline = 0;
 	}
+	ppu->total_cycles++;
 }
 
 void	ppu_tick_for(t_ppu *ppu, uint32_t n_ticks)

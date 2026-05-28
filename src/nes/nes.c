@@ -1,8 +1,11 @@
 #include "nes.h"
 #include "emu6502.h"
+#include <fcntl.h>
 #include <raylib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 void	init_nes(t_nes *nes)
 {
@@ -15,24 +18,28 @@ void	init_nes(t_nes *nes)
 	nes->apu.square[0].sweep.up_fix = 1;
 }
 
-uint8_t nes_step(t_nes *nes)
+void	catchup_with_cpu(t_nes *nes)
 {
-	uint8_t cycles = cpu_step(&nes->cpu);
-	nes->cpu.catchup_cycles += cycles;
-	ppu_tick_for(&nes->ppu, cycles * 3);
-	apu_tick_for(&nes->apu, cycles);
-
-	return cycles;
+	ppu_tick_for(&nes->ppu, nes->cpu.catchup_cycles * 3);
+	apu_tick_for(&nes->apu, nes->cpu.catchup_cycles);
+	nes->cpu.catchup_cycles = 0;
 }
 
-uint64_t nes_run_for(t_nes *nes, uint64_t n_cycles)
+uint8_t nes_step(t_nes *nes)
 {
-	uint64_t cycles = 0;
+	nes->cpu.irq_pending = nes->apu.frame_count.irq_pending || nes->mapper_irq;
+	// if (nes->mapper_irq)
+	// {
+	// 	printf("\e[34;1mMAPPER IRQ PENDING ");
+	// 	printf("\e[35;1mFRAME\e[m: %6lu ", nes->frames);
+	// 	printf("\e[32;1mSCANLINE\e[m: %3d ", nes->ppu.scanline);
+	// 	printf("\e[31;1mCYCLE\e[m: %3d\n", nes->ppu.cycle);
+	// }
 
-	while (cycles < n_cycles)
-		cycles += nes_step(nes);
+	uint8_t cycles = cpu_step(&nes->cpu);
+	catchup_with_cpu(nes);
 
-	return cycles - n_cycles;
+	return cycles;
 }
 
 // void	game_loop(t_nes *nes)
@@ -43,11 +50,13 @@ uint64_t nes_run_for(t_nes *nes, uint64_t n_cycles)
 uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 {
 	t_cpu	*cpu = arg;
-	t_ppu	*ppu = &((t_nes *)cpu->parent_device)->ppu;
+	t_nes	*nes = (t_nes *)cpu->parent_device;
+	t_ppu	*ppu = &nes->ppu;
 	PPUReg	reg = addr & 0x7;
 	uint8_t	data = 0;
 	// printf("mapped: %04X reg: %02X\n", addr, reg);
 
+	catchup_with_cpu(nes);
 	switch (reg) {
 		case (PPUCTRL): // 0x2000
 			printf("\e[31;1mError\e[m: %s: Invalid read\n", get_ppureg_str(reg));
@@ -95,9 +104,11 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 void	cpu_ppu_reg_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
 {
 	t_cpu	*cpu = arg;
-	t_ppu	*ppu = &((t_nes *)cpu->parent_device)->ppu;
+	t_nes	*nes = (t_nes *)cpu->parent_device;
+	t_ppu	*ppu = &nes->ppu;
 	PPUReg	reg = addr & 0x7;
 
+	catchup_with_cpu(nes);
 	switch (reg) {
 		case (PPUCTRL): // 0x2000
 			SET_BIT(ppu->t, BIT_10, val & BIT_0);
@@ -164,6 +175,7 @@ uint8_t cpu_io_page_read(struct pt_entry *entry, void *arg, uint16_t addr)
 {
 	t_cpu	*cpu = arg;
 	t_nes	*nes = (t_nes *)cpu->parent_device;
+	t_apu	*apu = &nes->apu;
 	// t_ppu	*ppu = &((t_nes *)cpu->parent_device)->ppu;
 	uint8_t	out = (addr >> 8) & 0xFF;
 
@@ -172,10 +184,25 @@ uint8_t cpu_io_page_read(struct pt_entry *entry, void *arg, uint16_t addr)
 		return out;
 	
 	IOReg reg = addr & 0xFFF;
+	catchup_with_cpu(nes);
 	switch (reg) {
-		case (SND_CHN):
+		case (SND_CHN): // 0x4015
+			out = 0;
+			if (apu->square[0].length_counter > 0)
+				out |= 0x01;
+			if (apu->square[1].length_counter > 0)
+				out |= 0x02;
+			if (apu->triangle.length_counter > 0)
+				out |= 0x04;
+			if (apu->noise.length_counter > 0)
+				out |= 0x08;
+
+			if (apu->frame_count.irq_pending)
+				out |= 0x40;
+
+			apu->frame_count.irq_pending = false;
 			return out;
-		case (JOY1):
+		case (JOY1): // 0x4016
 			if (nes->joy_strobe)
 				nes->joy_shift[0] = nes->joy_state[0];
 
@@ -184,7 +211,7 @@ uint8_t cpu_io_page_read(struct pt_entry *entry, void *arg, uint16_t addr)
 			if (!nes->joy_strobe)
 				nes->joy_shift[0] >>= 1;
 			return out;
-		case (JOY2):
+		case (JOY2): // 0x4017
 			if (nes->joy_strobe)
 				nes->joy_shift[1] = nes->joy_state[1];
 
@@ -216,6 +243,17 @@ void	apply_nes_mmap(t_nes *nes)
 	map_memory(cpu->pagetable, 0x2000, 8, nes->ppu.registers, cpu_ppu_reg_read, cpu_ppu_reg_write);
 
 	// Map ppu to vram based on mirroring
-	map_ppu_nametables(&nes->ppu, nes->ppu.mirroring);
+	map_ppu_nametables(&nes->ppu, NULL, nes->ppu.mirroring);
 	map_ppu_pattern_tables(nes, nes->cart);
+}
+
+void	dump_ppu_memory(t_ppu *ppu)
+{
+	int fd = open("ppu.dmp", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IROTH | S_IWGRP);
+	for (uint16_t i = 0; i < 0x4000; i++)
+	{
+		uint8_t val = ppu_read(ppu, i);
+		write(fd, &val, 1);
+	}
+	close(fd);
 }

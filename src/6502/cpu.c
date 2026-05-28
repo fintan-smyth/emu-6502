@@ -198,12 +198,15 @@ uint8_t	cpu_step(t_cpu *cpu)
 	{
 		exec_hardware_interrupt(cpu, 0xFFFA);
 		cpu->nmi_pending = 0;
+		cpu->catchup_cycles += 7;
 		return 7;
 	}
 
 	if (cpu->irq_pending & !(cpu->status & FLAG_I))
 	{
 		exec_hardware_interrupt(cpu, 0xFFFE);
+		cpu->irq_pending = 0;
+		cpu->catchup_cycles += 7;
 		return 7;
 	}
 

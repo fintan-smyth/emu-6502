@@ -1136,7 +1136,7 @@ static void (*const instr_funcs[])(t_cpu *, const t_instruct *) = {
 uint8_t	handle_cycles(t_cpu *cpu, const t_instruct *instr)
 {
 	uint8_t cycles = 0;
-	cycles += instr->cycles & 0x0F;
+	// cycles += instr->cycles & 0x0F;
 
 	switch (instr->cycles & 0xF0)
 	{
@@ -1157,9 +1157,8 @@ uint8_t	handle_cycles(t_cpu *cpu, const t_instruct *instr)
 		default:
 			break ;
 	}
-	if (cpu->cycle_events & CYCLE_DMA)
-		cycles += 513;
 	cpu->cycles += cycles;
+	cpu->catchup_cycles += cycles;
 	return cycles;
 }
 
@@ -1171,7 +1170,15 @@ uint8_t	execute_instr(t_cpu *cpu, const t_instruct *instr)
 	#endif
 
 	cpu->cycle_events = 0;
+	uint8_t cycles = instr->cycles & 0x0F;
+	cpu->catchup_cycles += cycles;
+	cpu->cycles += cycles;
 
+	if (instr->instruction > SKW)
+	{
+		printf("Illegal instruction encountered\n");
+		exit(9);
+	}
 	instr_funcs[instr->instruction](cpu, instr);
-	return handle_cycles(cpu, instr);
+	return cycles + handle_cycles(cpu, instr);
 }

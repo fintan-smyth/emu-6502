@@ -1,3 +1,4 @@
+#include "emu6502.h"
 #include "nes.h"
 #include <stdint.h>
 #include <sys/types.h>
@@ -22,157 +23,6 @@ static const uint8_t length_table[32] = {
 static const uint16_t noise_timer_table[16] = {
     4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
 };
-
-void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
-{
-	t_cpu		*cpu = arg;
-	t_nes		*nes = (t_nes *)cpu->parent_device;
-	t_ppu		*ppu = &nes->ppu;
-	t_apu		*apu = &nes->apu;
-	uint16_t	dma_src = 0;
-	struct square_channel *sq1 = &apu->square[0];
-	struct square_channel *sq2 = &apu->square[1];
-	struct triangle_channel *tri = &apu->triangle;
-	struct noise_channel *noise = &apu->noise;
-
-
-	addr &= 0xFFF;
-	if (addr >= IOREG_MAX)
-		return ;
-
-	// IOReg reg = addr & 0xFF;
-	switch (addr) {
-		case (SQ1_VOL): // 0x4000
-			sq1->duty_mode = (val >> 6) & 0x03;
-			sq1->volume = val & 0x0F;
-			sq1->length_halt = (val & 0x20) != 0;
-			sq1->envelope_enabled = (val & 0x10) == 0;
-			return;
-		case (SQ1_SWEEP): // 0x4001
-			sq1->sweep.enabled = (val & 0x80) != 0;
-			sq1->sweep.divider_period = (val >> 4) & 0x07;
-			sq1->sweep.negate = (val & 0x08) != 0;
-			sq1->sweep.shift = (val & 0x07);
-			sq1->sweep.reload = true;
-			return;
-		case (SQ1_LO): // 0x4002
-			sq1->timer_reload = (sq1->timer_reload & 0xFF00) | val;
-			return;
-		case (SQ1_HI): // 0x4003
-			sq1->timer_reload = (sq1->timer_reload & 0x00FF) | ((val & 0x07) << 8);
-			sq1->duty_step = 0;
-			sq1->envelope_start = true;
-			if (apu->status & CHANNEL_SQ1)
-				sq1->length_counter = length_table[val >> 3];
-			return;
-		case (SQ2_VOL): // 0x4004
-			sq2->duty_mode = (val >> 6) & 0x03;
-			sq2->volume = val & 0x0F;
-			sq2->length_halt = (val & 0x20) != 0;
-			sq2->envelope_enabled = (val & 0x10) == 0;
-			return;
-		case (SQ2_SWEEP): // 0x4005
-			sq2->sweep.enabled = (val & 0x80) != 0;
-			sq2->sweep.divider_period = (val >> 4) & 0x07;
-			sq2->sweep.negate = (val & 0x08) != 0;
-			sq2->sweep.shift = (val & 0x07);
-			sq2->sweep.reload = true;
-			return;
-		case (SQ2_LO): // 0x4006
-			sq2->timer_reload = (sq2->timer_reload & 0xFF00) | val;
-			return;
-		case (SQ2_HI): // 0x4007
-			sq2->timer_reload = (sq2->timer_reload & 0x00FF) | ((val & 0x07) << 8);
-			sq2->duty_step = 0;
-			sq2->envelope_start = true;
-			if (apu->status & CHANNEL_SQ2)
-				sq2->length_counter = length_table[val >> 3];
-			return;
-		case (TRI_LINEAR): // 0x4008
-			tri->control_flag = (val & 0x80) != 0;
-			tri->linear_reload = val & 0x7F;
-			return;
-		case (UNUSED_09): // 0x4009
-			return;
-		case (TRI_LO): // 0x400A
-			tri->timer_reload = (tri->timer_reload & 0xFF00) | val;
-			return;
-		case (TRI_HI): // 0x400B
-			tri->timer_reload = (tri->timer_reload & 0x00FF) | ((val & 0x07) << 8);
-			if (apu->status & CHANNEL_TRI)
-				tri->length_counter = length_table[val >> 3];
-			tri->linear_reload_flag = true;
-			return;
-		case (NOISE_VOL): // 0x400C
-			noise->length_halt = (val & 0x20) != 0;
-			noise->envelope_enabled = (val & 0x10) == 0;
-			noise->volume = val & 0x0F;
-			return;
-		case (UNUSED_0D): // 0x400D
-			return;
-		case (NOISE_LO): // 0x400E
-			noise->mode_flag = (val & 0x80) != 0;
-			noise->timer_reload = noise_timer_table[val & 0x0F];
-			return;
-		case (NOISE_HI): // 0x400F
-			if (apu->status & CHANNEL_NOISE)
-				noise->length_counter = length_table[val >> 3];
-			noise->envelope_start = true;
-			return;
-		case (DMC_FREQ): // 0x4010
-			return;
-		case (DMC_RAW): // 0x4011
-			return;
-		case (DMC_START): // 0x4012
-			return;
-		case (DMC_LEN): // 0x4013
-			return;
-		case (OAMDMA): // 0x4014
-			// cpu->cycle_events |= CYCLE_DMA;
-			dma_src = val << 8;
-			// cpu->catchup_cycles += 1;
-			// ppu_catchup(nes);
-			ppu_tick_for(ppu, 3);
-			apu_tick_for(apu, 1);
-			if (ppu->oam_addr != 0)
-				printf("\e[31;1mDMA initiated\e[m OAMADDR: 0x%02X scanline: %d cycle: %d\n", ppu->oam_addr, ppu->scanline, ppu->cycle);
-			for (int i = 0; i < 256; i++)
-			{
-				// cpu->catchup_cycles += 2;
-				ppu->oam[ppu->oam_addr++] = read_byte(cpu, dma_src + (uint8_t)i);
-				ppu_tick_for(ppu, 6);
-				apu_tick_for(apu, 2);
-				// ppu_catchup(nes);
-			}
-			return;
-		case (SND_CHN): // 0x4015
-			apu->status = (apu->status & 0xE0) | (val & 0x1F);
-			if ((val & CHANNEL_SQ1) == 0)
-				sq1->length_counter = 0;
-			if ((val & CHANNEL_SQ2) == 0)
-				sq2->length_counter = 0;
-			if ((val & CHANNEL_TRI) == 0)
-				tri->length_counter = 0;
-			if ((val & CHANNEL_NOISE) == 0)
-				noise->length_counter = 0;
-			return;
-		case (JOY1): // 0x4016
-			nes->joy_strobe = (val & 0x01);
-			if (nes->joy_strobe)
-			{
-				nes->joy_shift[0] = nes->joy_state[0];
-				nes->joy_shift[1] = nes->joy_state[1];
-			}
-			return;
-		case (JOY2): // 0x4017
-			return;
-		default:
-			// Unreachable
-			return;
-	}
-	(void)entry;
-}
-
 
 void	tick_square_timer(struct square_channel *sq)
 {
@@ -317,29 +167,75 @@ void	triangle_tick_linear(struct triangle_channel *tri)
 		tri->linear_reload_flag = false;
 }
 
-void	tick_frame_counter(t_apu *apu)
+void	clock_quarter_frame(t_apu *apu)
 {
-	apu->frame_count = (apu->frame_count + 1) % 4;
-
 	square_tick_envelope(&apu->square[0]);
 	square_tick_envelope(&apu->square[1]);
 	noise_tick_envelope(&apu->noise);
 	triangle_tick_linear(&apu->triangle);
+}
 
-	// printf("Frame count ticked!\n");
-	if (apu->frame_count % 2 == 1)
+void	clock_half_frame(t_apu *apu)
+{
+	square_tick_sweep(&apu->square[0]);
+	square_tick_sweep(&apu->square[1]);
+
+	if (!apu->square[0].length_halt && (apu->square[0].length_counter > 0))
+		apu->square[0].length_counter--;
+	if (!apu->square[1].length_halt && (apu->square[1].length_counter > 0))
+		apu->square[1].length_counter--;
+	if (!apu->noise.length_halt && (apu->noise.length_counter > 0))
+		apu->noise.length_counter--;
+	if (!apu->triangle.control_flag && (apu->triangle.length_counter > 0))
+		apu->triangle.length_counter--;
+}
+
+void	tick_frame_counter(t_apu *apu)
+{
+	if (apu->frame_count.mode == 0)
 	{
-		square_tick_sweep(&apu->square[0]);
-		square_tick_sweep(&apu->square[1]);
-
-		if (!apu->square[0].length_halt && (apu->square[0].length_counter > 0))
-			apu->square[0].length_counter--;
-		if (!apu->square[1].length_halt && (apu->square[1].length_counter > 0))
-			apu->square[1].length_counter--;
-		if (!apu->noise.length_halt && (apu->noise.length_counter > 0))
-			apu->noise.length_counter--;
-		if (!apu->triangle.control_flag && apu->triangle.length_counter > 0)
-			apu->triangle.length_counter--;
+		switch (apu->frame_count.step) {
+			case (0):
+				clock_quarter_frame(apu);
+				break;
+			case (1):
+				clock_quarter_frame(apu);
+				clock_half_frame(apu);
+				break;
+			case (2):
+				clock_quarter_frame(apu);
+				break;
+			case (3):
+				clock_quarter_frame(apu);
+				clock_half_frame(apu);
+				if (!apu->frame_count.irq_inhibit)
+					apu->frame_count.irq_pending = true;
+				break;
+		}
+		apu->frame_count.step = (apu->frame_count.step + 1) % 4;
+	}
+	else
+	{
+		switch (apu->frame_count.step) {
+			case (0):
+				clock_quarter_frame(apu);
+				break;
+			case (1):
+				clock_quarter_frame(apu);
+				clock_half_frame(apu);
+				break;
+			case (2):
+				clock_quarter_frame(apu);
+				break;
+			case (3):
+				// Idle
+				break;
+			case (4):
+				clock_quarter_frame(apu);
+				clock_half_frame(apu);
+				break;
+		}
+		apu->frame_count.step = (apu->frame_count.step + 1) % 5;
 	}
 }
 
@@ -426,15 +322,15 @@ void apu_tick_for(t_apu *apu, uint32_t cpu_cycles)
 	static int16_t	sample_buffer[1024] = {};
 	static uint16_t	buffer_idx = 0;
 
-	apu->cpu_cycles += cpu_cycles;
 	audio_timer += cpu_cycles;
+	apu->frame_count.cpu_cycles += cpu_cycles;
 
 	while (cpu_cycles--)
 		apu_tick(apu);
 
-	if (apu->cpu_cycles >= 7457)
+	if (apu->frame_count.cpu_cycles >= 7457)
 	{
-		apu->cpu_cycles -= 7457;
+		apu->frame_count.cpu_cycles -= 7457;
 		tick_frame_counter(apu);
 	}
 
@@ -453,4 +349,163 @@ void apu_tick_for(t_apu *apu, uint32_t cpu_cycles)
 			buffer_idx = 0;
 		}
 	}
+}
+
+void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
+{
+	t_cpu		*cpu = arg;
+	t_nes		*nes = (t_nes *)cpu->parent_device;
+	t_ppu		*ppu = &nes->ppu;
+	t_apu		*apu = &nes->apu;
+	uint16_t	dma_src = 0;
+	struct square_channel *sq1 = &apu->square[0];
+	struct square_channel *sq2 = &apu->square[1];
+	struct triangle_channel *tri = &apu->triangle;
+	struct noise_channel *noise = &apu->noise;
+
+
+	addr &= 0xFFF;
+	if (addr >= IOREG_MAX)
+		return ;
+
+	// IOReg reg = addr & 0xFF;
+	catchup_with_cpu(nes);
+	switch (addr) {
+		case (SQ1_VOL): // 0x4000
+			sq1->duty_mode = (val >> 6) & 0x03;
+			sq1->volume = val & 0x0F;
+			sq1->length_halt = (val & 0x20) != 0;
+			sq1->envelope_enabled = (val & 0x10) == 0;
+			return;
+		case (SQ1_SWEEP): // 0x4001
+			sq1->sweep.enabled = (val & 0x80) != 0;
+			sq1->sweep.divider_period = (val >> 4) & 0x07;
+			sq1->sweep.negate = (val & 0x08) != 0;
+			sq1->sweep.shift = (val & 0x07);
+			sq1->sweep.reload = true;
+			return;
+		case (SQ1_LO): // 0x4002
+			sq1->timer_reload = (sq1->timer_reload & 0xFF00) | val;
+			return;
+		case (SQ1_HI): // 0x4003
+			sq1->timer_reload = (sq1->timer_reload & 0x00FF) | ((val & 0x07) << 8);
+			sq1->duty_step = 0;
+			sq1->envelope_start = true;
+			if (apu->status & CHANNEL_SQ1)
+				sq1->length_counter = length_table[val >> 3];
+			return;
+		case (SQ2_VOL): // 0x4004
+			sq2->duty_mode = (val >> 6) & 0x03;
+			sq2->volume = val & 0x0F;
+			sq2->length_halt = (val & 0x20) != 0;
+			sq2->envelope_enabled = (val & 0x10) == 0;
+			return;
+		case (SQ2_SWEEP): // 0x4005
+			sq2->sweep.enabled = (val & 0x80) != 0;
+			sq2->sweep.divider_period = (val >> 4) & 0x07;
+			sq2->sweep.negate = (val & 0x08) != 0;
+			sq2->sweep.shift = (val & 0x07);
+			sq2->sweep.reload = true;
+			return;
+		case (SQ2_LO): // 0x4006
+			sq2->timer_reload = (sq2->timer_reload & 0xFF00) | val;
+			return;
+		case (SQ2_HI): // 0x4007
+			sq2->timer_reload = (sq2->timer_reload & 0x00FF) | ((val & 0x07) << 8);
+			sq2->duty_step = 0;
+			sq2->envelope_start = true;
+			if (apu->status & CHANNEL_SQ2)
+				sq2->length_counter = length_table[val >> 3];
+			return;
+		case (TRI_LINEAR): // 0x4008
+			tri->control_flag = (val & 0x80) != 0;
+			tri->linear_reload = val & 0x7F;
+			return;
+		case (UNUSED_09): // 0x4009
+			return;
+		case (TRI_LO): // 0x400A
+			tri->timer_reload = (tri->timer_reload & 0xFF00) | val;
+			return;
+		case (TRI_HI): // 0x400B
+			tri->timer_reload = (tri->timer_reload & 0x00FF) | ((val & 0x07) << 8);
+			if (apu->status & CHANNEL_TRI)
+				tri->length_counter = length_table[val >> 3];
+			tri->linear_reload_flag = true;
+			return;
+		case (NOISE_VOL): // 0x400C
+			noise->length_halt = (val & 0x20) != 0;
+			noise->envelope_enabled = (val & 0x10) == 0;
+			noise->volume = val & 0x0F;
+			return;
+		case (UNUSED_0D): // 0x400D
+			return;
+		case (NOISE_LO): // 0x400E
+			noise->mode_flag = (val & 0x80) != 0;
+			noise->timer_reload = noise_timer_table[val & 0x0F];
+			return;
+		case (NOISE_HI): // 0x400F
+			if (apu->status & CHANNEL_NOISE)
+				noise->length_counter = length_table[val >> 3];
+			noise->envelope_start = true;
+			return;
+		case (DMC_FREQ): // 0x4010
+			return;
+		case (DMC_RAW): // 0x4011
+			return;
+		case (DMC_START): // 0x4012
+			return;
+		case (DMC_LEN): // 0x4013
+			return;
+		case (OAMDMA): // 0x4014
+			dma_src = val << 8;
+			cpu->catchup_cycles += 1;
+			catchup_with_cpu(nes);
+			if (ppu->oam_addr != 0)
+				printf("\e[31;1mDMA initiated\e[m OAMADDR: 0x%02X scanline: %d cycle: %d\n", ppu->oam_addr, ppu->scanline, ppu->cycle);
+			for (int i = 0; i < 256; i++)
+			{
+				cpu->catchup_cycles += 2;
+				ppu->oam[ppu->oam_addr++] = read_byte(cpu, dma_src + (uint8_t)i);
+				catchup_with_cpu(nes);
+			}
+			return;
+		case (SND_CHN): // 0x4015
+			apu->status = (apu->status & 0xE0) | (val & 0x1F);
+			if ((val & CHANNEL_SQ1) == 0)
+				sq1->length_counter = 0;
+			if ((val & CHANNEL_SQ2) == 0)
+				sq2->length_counter = 0;
+			if ((val & CHANNEL_TRI) == 0)
+				tri->length_counter = 0;
+			if ((val & CHANNEL_NOISE) == 0)
+				noise->length_counter = 0;
+			return;
+		case (JOY1): // 0x4016
+			nes->joy_strobe = (val & 0x01);
+			if (nes->joy_strobe)
+			{
+				nes->joy_shift[0] = nes->joy_state[0];
+				nes->joy_shift[1] = nes->joy_state[1];
+			}
+			return;
+		case (JOY2): // 0x4017
+			apu->frame_count.step = 0;
+			apu->frame_count.cpu_cycles = 0;
+			apu->frame_count.mode = (val >> 7) & 0x01;
+			apu->frame_count.irq_inhibit = (val & BIT_6) != 0;
+
+			if (apu->frame_count.irq_inhibit)
+				apu->frame_count.irq_pending = false;
+
+			if (apu->frame_count.mode == 1)
+			{
+				clock_quarter_frame(apu);
+				clock_half_frame(apu);
+			}
+			return;
+		default:
+			// Unreachable
+			return;
+	}
+	(void)entry;
 }

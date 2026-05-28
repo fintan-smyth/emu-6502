@@ -104,4 +104,5 @@ void update_frame(t_nes *nes)
 	DrawTextureEx(ppu->screen_tex, (Vector2){x_offset, y_offset}, 0, scaling, WHITE);
 	DrawFPS(10, 10);
 	EndDrawing();
+	nes->frames++;
 }

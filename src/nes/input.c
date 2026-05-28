@@ -65,4 +65,10 @@ void	handle_player_input(t_nes *nes)
 		save_game(nes);
 	if (IsKeyPressed(KEY_Z))
 		load_save_game(nes);
+	if (IsKeyPressed(KEY_B))
+	{
+		printf("mirroring: %d\n", nes->ppu.mirroring);
+		dump_ppu_memory(&nes->ppu);
+		exit(0);
+	}
 }

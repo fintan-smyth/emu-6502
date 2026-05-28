@@ -192,6 +192,7 @@ typedef struct s_ppu
 	struct pt_entry	pagetable[0x10];
 	uint32_t	*screenbuf;
 	Texture2D	screen_tex;
+	size_t		total_cycles;
 } t_ppu;
 
 enum
@@ -220,7 +221,16 @@ union mapper
 	}	cnrom;
 	struct
 	{
-
+		uint8_t	target_reg;
+		uint8_t	registers[8];
+		bool	prg_mode;
+		bool	chr_mode;
+		uint8_t	irq_latch;
+		uint8_t	irq_counter;
+		bool	irq_reload;
+		bool	irq_enabled;
+		size_t	a12_low_cycle;
+		bool	a12_state;
 	}	mmc3;
 	struct
 	{
@@ -288,13 +298,18 @@ struct triangle_channel
     bool		linear_reload_flag;
 };
 
-
 typedef struct s_apu
 {
 	AudioStream	stream;
-	uint32_t	cpu_cycles;
-	uint8_t		frame_count;
 	uint8_t		status;
+	struct
+	{
+		uint32_t	cpu_cycles;
+		uint8_t		step;
+		uint8_t		mode;
+		bool		irq_inhibit;
+		bool		irq_pending;
+	}			frame_count;
 	struct square_channel	square[2];
 	struct triangle_channel	triangle;
 	struct noise_channel	noise;
@@ -317,6 +332,8 @@ struct s_nes
 		uint8_t	pattern_palette;
 		int32_t	fps;
 	} settings;
+	bool	mapper_irq;
+	size_t	frames;
 };
 
 void	init_nes(t_nes *nes);
@@ -328,16 +345,15 @@ void	nes_load_cartridge(t_nes *nes, t_cart *cart);
 
 const char	*get_ppureg_str(PPUReg reg);
 void		map_ppu_pattern_tables(t_nes *nes, t_cart *cart);
-void		map_ppu_nametables(t_ppu *ppu, int mirror_mode);
+void 		map_ppu_nametables(t_ppu *ppu, void *read_handler, int mirror_mode);
 void		get_sprite_data(t_ppu *ppu, t_sprite *sprite, uint32_t oam_index);
 uint8_t		ppu_read(t_ppu *ppu, uint16_t addr);
 void		ppu_write(t_ppu *ppu, uint16_t addr, uint8_t val);
 void		ppu_tick(t_ppu *ppu);
 void		ppu_tick_for(t_ppu *ppu, uint32_t n_ticks);
-void		ppu_catchup(t_nes *nes);
 
+void		catchup_with_cpu(t_nes *nes);
 uint8_t		nes_step(t_nes *nes);
-uint64_t	nes_run_for(t_nes *nes, uint64_t n_cycles);
 
 void	init_raylib(t_nes *nes);
 void	draw_palette(void);
@@ -355,6 +371,7 @@ void	handle_player_input(t_nes *nes);
 // Mappers
 
 void	uxrom_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val);
+void	mmc3_clock_a12(t_nes *nes, bool a12_high, size_t cpu_cycle);
 void	init_mapper_mmap(t_nes *nes, t_cart *cart);
 void	refresh_mapper_mmap(t_nes *nes, t_cart *cart);
 
@@ -362,5 +379,7 @@ void	refresh_mapper_mmap(t_nes *nes, t_cart *cart);
 void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val);
 void	apu_tick(t_apu *apu);
 void	apu_tick_for(t_apu *apu, uint32_t n_ticks);
+
+void	dump_ppu_memory(t_ppu *ppu);
 
 #endif
