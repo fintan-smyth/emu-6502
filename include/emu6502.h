@@ -72,7 +72,6 @@
 #define COL_CYAN 6
 #define COL_WHITE 7
 
-
 typedef enum e_addr_mode
 {
 	IMPLIED = 0,
@@ -188,23 +187,55 @@ struct pt_entry
 	void	(*write_handler)(struct pt_entry *, void *, uint16_t, uint8_t);
 };
 
+typedef enum
+{
+	INT_NONE = 0,
+	INT_BRK,
+	INT_IRQ,
+	INT_NMI,
+	INT_RESET,
+}	InterruptType;
+
 typedef struct t_cpu
 {
-	void		*parent_device;
-	uint8_t 	a;
-	uint8_t 	x;
-	uint8_t 	y;
-	uint8_t 	sp;
-	uint8_t		status;
-	uint16_t	pc;
-	uint16_t	addrbus;
-	size_t		cycles;
-	size_t		catchup_cycles;
-	uint8_t		cycle_events;
-	bool		nmi_pending;
-	bool		irq_pending;
-	int			logfd;
+	void			*parent_device;
+	uint8_t			a;
+	uint8_t			x;
+	uint8_t			y;
+	uint8_t			sp;
+	uint8_t			status;
+	uint16_t		pc;
+	uint8_t			current_opcode;
+	uint16_t		addrbus;
+	uint8_t			databus;
+	uint8_t			instr_step;
+	size_t			cycles;
+	size_t			catchup_cycles;
+	uint8_t			cycle_events;
+	bool			nmi_pending;
+	bool			irq_pending;
+	InterruptType	pending_interrupt;
+	uint16_t		interrupt_vector;
+	bool			cycle_penalty_paid;
+	bool			page_crossed;
+	int				logfd;
+	struct {
+		union {
+			uint16_t result;
+			uint16_t target;
+		};
+		union {
+			bool	carry;
+			bool	overflow;
+			bool	page_crossed_down;
+		};
+		union {
+			uint8_t	unflipped;
+			int8_t	rel;
+		};
+	}	tmp;
 	struct pt_entry	pagetable[0x40];
+	bool	debug_int;
 }	t_cpu;
 
 uint8_t		read_byte(t_cpu *cpu, size_t addr);
@@ -229,6 +260,8 @@ void		exec_hardware_interrupt(t_cpu *cpu, uint16_t vector_addr);
 uint8_t		execute_instr(t_cpu *cpu, const t_instruct *instr);
 uint8_t		cpu_step(t_cpu *cpu);
 uint64_t	cpu_run_for(t_cpu *cpu, uint64_t n_cycles);
+
+void	cpu_tick(t_cpu *cpu);
 
 void	print_instr(t_cpu *cpu, uint16_t addr);
 void 	print_registers(t_cpu *cpu);

@@ -28,18 +28,20 @@ void	catchup_with_cpu(t_nes *nes)
 uint8_t nes_step(t_nes *nes)
 {
 	nes->cpu.irq_pending = nes->apu.frame_count.irq_pending || nes->mapper_irq;
-	// if (nes->mapper_irq)
-	// {
-	// 	printf("\e[34;1mMAPPER IRQ PENDING ");
-	// 	printf("\e[35;1mFRAME\e[m: %6lu ", nes->frames);
-	// 	printf("\e[32;1mSCANLINE\e[m: %3d ", nes->ppu.scanline);
-	// 	printf("\e[31;1mCYCLE\e[m: %3d\n", nes->ppu.cycle);
-	// }
 
 	uint8_t cycles = cpu_step(&nes->cpu);
 	catchup_with_cpu(nes);
 
 	return cycles;
+}
+
+void	nes_step_alt(t_nes *nes)
+{
+	nes->cpu.irq_pending = nes->apu.frame_count.irq_pending || nes->mapper_irq;
+
+	cpu_tick(&nes->cpu);
+	ppu_tick_for(&nes->ppu, 3);
+	apu_tick_for(&nes->apu, 1);
 }
 
 // void	game_loop(t_nes *nes)
@@ -53,18 +55,14 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 	t_nes	*nes = (t_nes *)cpu->parent_device;
 	t_ppu	*ppu = &nes->ppu;
 	PPUReg	reg = addr & 0x7;
-	uint8_t	data = 0;
+	uint8_t	data = (addr >> 8) & 0xFF;
 	// printf("mapped: %04X reg: %02X\n", addr, reg);
 
 	catchup_with_cpu(nes);
 	switch (reg) {
 		case (PPUCTRL): // 0x2000
-			printf("\e[31;1mError\e[m: %s: Invalid read\n", get_ppureg_str(reg));
-			exit(1);
 			break;
 		case (PPUMASK): // 0x2001
-			printf("\e[31;1mError\e[m: %s: Invalid read\n", get_ppureg_str(reg));
-			exit(1);
 			break;
 		case (PPUSTATUS): // 0x2002
 			data = ppu->registers[PPUSTATUS];
@@ -75,8 +73,6 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 			ppu->w = 0;
 			break;
 		case (OAMADDR): // 0x2003
-			printf("\e[31;1mError\e[m: %s: Invalid read\n", get_ppureg_str(reg));
-			exit(1);
 			break;
 		case (OAMDATA): // 0x2004
 			data = ppu->oam[ppu->oam_addr];
@@ -249,7 +245,7 @@ void	apply_nes_mmap(t_nes *nes)
 
 void	dump_ppu_memory(t_ppu *ppu)
 {
-	int fd = open("ppu.dmp", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IROTH | S_IWGRP);
+	int fd = open("ppu.dmp", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
 	for (uint16_t i = 0; i < 0x4000; i++)
 	{
 		uint8_t val = ppu_read(ppu, i);

@@ -979,7 +979,7 @@ static void exec_ARR(t_cpu *cpu, const t_instruct *instr)
 	SET_BIT(cpu->status, FLAG_Z, result == 0);
 	SET_BIT(cpu->status, FLAG_C, result & BIT_6);
 
-	// Set overflow flag if bit 6 is different from bit 7
+	// Set overflow flag if bit 5 is different from bit 6
 	SET_BIT(cpu->status, FLAG_V, ((result >> 6) ^ (result >> 5)) & 1);
 
 	cpu->a = result;
@@ -1166,7 +1166,7 @@ uint8_t	execute_instr(t_cpu *cpu, const t_instruct *instr)
 {
 	#ifdef NES_MODE
 	// if (cpu->cycles >= 17629752)
-	// log_instr(cpu->logfd, cpu, instr);
+		// log_instr(cpu->logfd, cpu, instr);
 	#endif
 
 	cpu->cycle_events = 0;

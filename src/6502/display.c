@@ -305,57 +305,57 @@ int print_operand_disassembly(int fd, t_cpu *cpu, const t_instruct *instr)
 		case (RELATIVE):
 			return dprintf(fd, "$%04X", get_addr(cpu, instr->addrmode) + instr->n_bytes);
 		case (ZEROPAGE):
-			// return dprintf(fd, "$%02X = %02X", get_addr(cpu, instr->addrmode), get_operand(cpu, instr->addrmode));
-			return dprintf(fd, "$%02X", get_addr(cpu, instr->addrmode));
+			return dprintf(fd, "$%02X = %02X", get_addr(cpu, instr->addrmode), get_operand(cpu, instr->addrmode));
+			// return dprintf(fd, "$%02X", get_addr(cpu, instr->addrmode));
 		case (ZEROPAGE_X):
-			// return dprintf(fd, "$%02X,X @ %02X = %02X",
-			return dprintf(fd, "$%02X,X @ %02X",
+			return dprintf(fd, "$%02X,X @ %02X = %02X",
+			// return dprintf(fd, "$%02X,X @ %02X",
 				  read_byte(cpu, cpu->pc + 1),
-				  get_addr(cpu, instr->addrmode)
-				  // get_operand(cpu, instr->addrmode)
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
 				);
 		case (ZEROPAGE_Y):
-			// return dprintf(fd, "$%02X,Y @ %02X = %02X",
-			return dprintf(fd, "$%02X,Y @ %02X",
+			return dprintf(fd, "$%02X,Y @ %02X = %02X",
+			// return dprintf(fd, "$%02X,Y @ %02X",
 				  read_byte(cpu, cpu->pc + 1),
-				  get_addr(cpu, instr->addrmode)
-				  // get_operand(cpu, instr->addrmode)
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
 				);
 		case (ZEROPAGE_X_INDIRECT):
-			// return dprintf(fd, "($%02X,X) @ %02X = %04X = %02X",
-			return dprintf(fd, "($%02X,X) @ %02X = %04X",
+			return dprintf(fd, "($%02X,X) @ %02X = %04X = %02X",
+			// return dprintf(fd, "($%02X,X) @ %02X = %04X",
 				  read_byte(cpu, cpu->pc + 1),
 				  (cpu->x + read_byte(cpu, cpu->pc + 1)) & 0xFF,
-				  get_addr(cpu, instr->addrmode)
-				  // get_operand(cpu, instr->addrmode)
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
 				);
 		case (ZEROPAGE_Y_INDIRECT):
-			// return dprintf(fd, "($%02X),Y = %04X @ %04X = %02X",
-			return dprintf(fd, "($%02X),Y = %04X @ %04X",
+			return dprintf(fd, "($%02X),Y = %04X @ %04X = %02X",
+			// return dprintf(fd, "($%02X),Y = %04X @ %04X",
 				  read_byte(cpu, cpu->pc + 1),
 				  read_word_zp(cpu, read_byte(cpu, cpu->pc + 1)),
-				  get_addr(cpu, instr->addrmode)
-				  // get_operand(cpu, instr->addrmode)
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
 				);
 		case (ABSOLUTE):
 			if (instr->instruction == JMP || instr->instruction == JSR)
 				return dprintf(fd, "$%04X", get_addr(cpu, instr->addrmode));
 			else
-				// return dprintf(fd, "$%04X = %02X", get_addr(cpu, instr->addrmode), get_operand(cpu, instr->addrmode));
-				return dprintf(fd, "$%04X", get_addr(cpu, instr->addrmode));
+				return dprintf(fd, "$%04X = %02X", get_addr(cpu, instr->addrmode), get_operand(cpu, instr->addrmode));
+				// return dprintf(fd, "$%04X", get_addr(cpu, instr->addrmode));
 		case (ABSOLUTE_X):
-			// return dprintf(fd, "$%04X,X @ %04X = %02X",
-			return dprintf(fd, "$%04X,X @ %04X",
+			return dprintf(fd, "$%04X,X @ %04X = %02X",
+			// return dprintf(fd, "$%04X,X @ %04X",
 				  read_word(cpu, cpu->pc + 1),
-				  get_addr(cpu, instr->addrmode)
-				  // get_operand(cpu, instr->addrmode)
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
 				);
 		case (ABSOLUTE_Y):
-			// return dprintf(fd, "$%04X,Y @ %04X = %02X",
-			return dprintf(fd, "$%04X,Y @ %04X",
+			return dprintf(fd, "$%04X,Y @ %04X = %02X",
+			// return dprintf(fd, "$%04X,Y @ %04X",
 				  read_word(cpu, cpu->pc + 1),
-				  get_addr(cpu, instr->addrmode)
-				  // get_operand(cpu, instr->addrmode)
+				  get_addr(cpu, instr->addrmode),
+				  get_operand(cpu, instr->addrmode)
 				);
 		case (ABSOLUTE_INDIRECT):
 			return dprintf(fd, "($%04X) = %04X", read_word(cpu, cpu->pc + 1), get_addr(cpu, instr->addrmode));
@@ -469,6 +469,8 @@ void print_debug_view(t_cpu *cpu, uint16_t pc)
 	print_instr(cpu, pc);
 	printf("\n");
 	print_registers(cpu);
+	printf("\e[36;1mDBUS\e[m: 0x%02X\t\e[31;1mADDRBUS\e[m: 0x%04X\n", cpu->databus, cpu->addrbus);
+	printf("\e[34;1mSTEP\e[m: %d\t\e[32;1mCYCLE\e[m: %lu\n\n", cpu->instr_step, cpu->cycles);
 	print_stack(cpu);
 	print_zeropage(cpu);
 	printf("nmi: %d irq: %d\n", cpu->nmi_pending, cpu->irq_pending);

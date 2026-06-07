@@ -157,6 +157,33 @@ static inline void	run_until_breakpoint(t_nes *nes, BSTSet_word *breakpoints)
 	g_var = 0;
 }
 
+static inline void	tick_until_breakpoint(t_nes *nes, BSTSet_word *breakpoints)
+{
+	uint16_t cur_pc = 0x0000;
+	uint16_t old_pc = 0xFFFF;
+	g_var = 0;
+	// while (cur_pc != old_pc && g_var != SIGINT && !WindowShouldClose())
+	while (g_var != SIGINT && !WindowShouldClose())
+	{
+		if (nes->cpu.debug_int)
+		{
+			nes->cpu.debug_int = false;
+			break;
+		}
+		if (nes->cpu.instr_step == 0)
+		{
+			old_pc = cur_pc;
+			cur_pc = nes->cpu.pc;
+			if (bstset_word_contains(breakpoints, nes->cpu.pc))
+				break ;
+		}
+		// cpu_tick(&nes->cpu);
+		nes_step_alt(nes);
+	}
+	g_var = 0;
+	print_debug_view(&nes->cpu, old_pc);
+}
+
 void	debug_loop(t_nes *nes)
 {
 	uint16_t addrbuf;
@@ -201,7 +228,8 @@ void	debug_loop(t_nes *nes)
 					getchar();
 					continue ;
 				case ('c'):
-					run_until_breakpoint(nes, &breakpoints);
+					// run_until_breakpoint(nes, &breakpoints);
+					tick_until_breakpoint(nes, &breakpoints);
 					orig_pc = nes->cpu.pc;
 					continue ;
 				case ('q'):
@@ -212,11 +240,18 @@ void	debug_loop(t_nes *nes)
 			}
 		}
 
-		nes_step(nes);
-		printf("\e[2J\e[H\e[31;1m>>> EXECUTE >>>\e[m\n");
-		printf("-------------\n");
-		print_debug_view(&nes->cpu, orig_pc);
-		getchar();
+		// cpu_tick(&nes->cpu);
+		nes_step_alt(nes);
+		while (nes->cpu.instr_step != 0)
+		{
+			// nes_step(nes);
+			printf("\e[2J\e[H\e[31;1m>>> EXECUTE >>>\e[m\n");
+			printf("-------------\n");
+			print_debug_view(&nes->cpu, orig_pc);
+			getchar();
+			// cpu_tick(&nes->cpu);
+			nes_step_alt(nes);
+		}
 		// nes.cpu.pc += instr->n_bytes;
 		// if (nes.cpu.pc == orig_pc)
 		// 	break;
@@ -224,6 +259,13 @@ void	debug_loop(t_nes *nes)
 	printf("PC: %04X\n", nes->cpu.pc);
 
 }
+
+// void	debug_loop_simple(t_nes *nes)
+// {
+// 	uint16_t orig_pc = nes->cpu.pc;
+// 	print_debug_view(&nes->cpu, orig_pc);
+// 	while ((c = getchar() ))
+// }
 
 int	main(int argc, char **argv)
 {
@@ -246,20 +288,24 @@ int	main(int argc, char **argv)
 	set_term_settings();
 	// bstset_word_insert(&breakpoints, 0x3373);
 	
-	nes.cpu.status = FLAG_E;
-	nes.cpu.sp = 0xFF;
-	nes.cpu.cycles = 0;
-	exec_hardware_interrupt(&nes.cpu, 0xFFFC);
+	nes.cpu.pending_interrupt = INT_RESET;
+	// nes.cpu.status = FLAG_E | FLAG_I; // TODO: Change back when interrupts are handled
+	// nes.cpu.sp = 0xFD;
+	// nes.cpu.cycles = 7;
+	// nes.cpu.pc = 0xC000;
+	// exec_hardware_interrupt(&nes.cpu, 0xFFFC);
 	while (!WindowShouldClose())
-		nes_step(&nes);
-    // debug_loop(&nes);
+		nes_step_alt(&nes);
+		// nes_step(&nes);
+	// debug_loop(&nes);
 END:
 	free_cart(nes.cart);
 	free(nes.ppu.screenbuf);
 	reset_term_settings();
 	close(nes.cpu.logfd);
+	UnloadTexture(nes.ppu.screen_tex);
 	StopAudioStream(nes.apu.stream);
 	UnloadAudioStream(nes.apu.stream);
-    CloseAudioDevice();
+	CloseAudioDevice();
 	CloseWindow();
 }

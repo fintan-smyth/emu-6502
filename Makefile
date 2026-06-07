@@ -4,7 +4,7 @@ SRC_DIR := ./src
 BUILD_DIR:= ./build
 INC_DIR:= ./include
 
-CFLAGS = -Wall -Wextra -I $(INC_DIR) -O2
+CFLAGS = -Wall -Wextra -I $(INC_DIR) -O0
 
 LINK_FLAGS = -lraylib
 
@@ -24,6 +24,8 @@ SRC =	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/nes/render.c \
 		$(SRC_DIR)/nes/input.c \
 		$(SRC_DIR)/nes/saves.c \
+		$(SRC_DIR)/6502/instructions_alt.c \
+		# $(SRC_DIR)/6502/dump.c \
 
 OBJ = $(patsubst $(SRC_DIR)/%,$(BUILD_DIR)/%,$(SRC:.c=.o))
 

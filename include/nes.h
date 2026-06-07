@@ -354,6 +354,7 @@ void		ppu_tick_for(t_ppu *ppu, uint32_t n_ticks);
 
 void		catchup_with_cpu(t_nes *nes);
 uint8_t		nes_step(t_nes *nes);
+void		nes_step_alt(t_nes *nes);
 
 void	init_raylib(t_nes *nes);
 void	draw_palette(void);

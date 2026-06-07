@@ -604,7 +604,7 @@ void ppu_tick(t_ppu *ppu)
 
 	if (nmi_active && !ppu->nmi_state_prev)
 	{
-		// printf("NMI firing: scanline %3d cycle %3d\n", ppu->scanline, ppu->cycle);
+		// printf("NMI firing: scanline %3d cycle %3d cpu_cycle: %lu\n", ppu->scanline, ppu->cycle, ppu->nes->cpu.cycles);
 		*ppu->nmi_pin = true;
 	}
 
