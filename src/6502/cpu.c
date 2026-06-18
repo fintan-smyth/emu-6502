@@ -88,8 +88,8 @@ uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 			rel = read_byte(cpu, cpu->pc + 1);
 			ptr = cpu->pc + 2;
 			addrbus = cpu->pc + rel;
-			if ((ptr & 0xFF00) != ((addrbus + 2) & 0xFF00))
-				cpu->cycle_events |= CYCLE_PAGECROSS;
+			// if ((ptr & 0xFF00) != ((addrbus + 2) & 0xFF00))
+			// 	cpu->cycle_events |= CYCLE_PAGECROSS;
 			break;
 		case (ZEROPAGE):
 			addrbus = read_byte(cpu, cpu->pc + 1);
@@ -110,8 +110,8 @@ uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 		case (ZEROPAGE_Y_INDIRECT):
 			addrbus = read_byte(cpu, cpu->pc + 1);
 			addrbus = read_word_zp(cpu, addrbus);
-			if ((addrbus & 0xFF) + cpu->y > 0xFF)
-				cpu->cycle_events |= CYCLE_PAGECROSS;
+			// if ((addrbus & 0xFF) + cpu->y > 0xFF)
+			// 	cpu->cycle_events |= CYCLE_PAGECROSS;
 			addrbus += cpu->y;
 			break;
 		case (ABSOLUTE):
@@ -119,14 +119,14 @@ uint16_t	get_addr(t_cpu *cpu, AddrMode mode)
 			break;
 		case (ABSOLUTE_X):
 			addrbus = read_word(cpu, cpu->pc + 1);
-			if ((addrbus & 0xFF) + cpu->x > 0xFF)
-				cpu->cycle_events |= CYCLE_PAGECROSS;
+			// if ((addrbus & 0xFF) + cpu->x > 0xFF)
+			// 	cpu->cycle_events |= CYCLE_PAGECROSS;
 			addrbus += cpu->x;
 			break;
 		case (ABSOLUTE_Y):
 			addrbus = read_word(cpu, cpu->pc + 1);
-			if ((addrbus & 0xFF) + cpu->y > 0xFF)
-				cpu->cycle_events |= CYCLE_PAGECROSS;
+			// if ((addrbus & 0xFF) + cpu->y > 0xFF)
+			// 	cpu->cycle_events |= CYCLE_PAGECROSS;
 			addrbus += cpu->y;
 			break;
 		case (ABSOLUTE_INDIRECT):
@@ -192,35 +192,33 @@ void exec_hardware_interrupt(t_cpu *cpu, uint16_t vector_addr)
 	cpu->pc = read_word(cpu, vector_addr);
 }
 
-uint8_t	cpu_step(t_cpu *cpu)
-{
-	if (cpu->nmi_pending)
-	{
-		exec_hardware_interrupt(cpu, 0xFFFA);
-		cpu->nmi_pending = 0;
-		cpu->catchup_cycles += 7;
-		return 7;
-	}
+// uint8_t	cpu_step(t_cpu *cpu)
+// {
+// 	if (cpu->nmi_pending)
+// 	{
+// 		exec_hardware_interrupt(cpu, 0xFFFA);
+// 		cpu->nmi_pending = 0;
+// 		return 7;
+// 	}
+//
+// 	if (cpu->irq_pending & !(cpu->status & FLAG_I))
+// 	{
+// 		exec_hardware_interrupt(cpu, 0xFFFE);
+// 		cpu->irq_pending = 0;
+// 		return 7;
+// 	}
+//
+// 	uint8_t opcode = read_byte(cpu, cpu->pc);
+// 	const t_instruct *instr = get_instruction(opcode);
+// 	return execute_instr(cpu, instr);
+// }
 
-	if (cpu->irq_pending & !(cpu->status & FLAG_I))
-	{
-		exec_hardware_interrupt(cpu, 0xFFFE);
-		cpu->irq_pending = 0;
-		cpu->catchup_cycles += 7;
-		return 7;
-	}
-
-	uint8_t opcode = read_byte(cpu, cpu->pc);
-	const t_instruct *instr = get_instruction(opcode);
-	return execute_instr(cpu, instr);
-}
-
-uint64_t cpu_run_for(t_cpu *cpu, uint64_t n_cycles)
-{
-	uint64_t cycles = 0;
-
-	while (cycles < n_cycles)
-		cycles += cpu_step(cpu);
-
-	return cycles - n_cycles;
-}
+// uint64_t cpu_run_for(t_cpu *cpu, uint64_t n_cycles)
+// {
+// 	uint64_t cycles = 0;
+//
+// 	while (cycles < n_cycles)
+// 		cycles += cpu_step(cpu);
+//
+// 	return cycles - n_cycles;
+// }

@@ -210,15 +210,12 @@ typedef struct t_cpu
 	uint8_t			databus;
 	uint8_t			instr_step;
 	size_t			cycles;
-	size_t			catchup_cycles;
-	uint8_t			cycle_events;
 	bool			nmi_pending;
 	bool			irq_pending;
 	InterruptType	pending_interrupt;
 	uint16_t		interrupt_vector;
 	bool			cycle_penalty_paid;
 	bool			page_crossed;
-	int				logfd;
 	struct {
 		union {
 			uint16_t result;
@@ -234,8 +231,16 @@ typedef struct t_cpu
 			int8_t	rel;
 		};
 	}	tmp;
+	struct {
+		bool		active;
+		uint8_t		page;
+		uint16_t	step;
+		uint8_t		buffer;
+		uint16_t	offset;
+	}	dma;
 	struct pt_entry	pagetable[0x40];
 	bool	debug_int;
+	int		logfd;
 }	t_cpu;
 
 uint8_t		read_byte(t_cpu *cpu, size_t addr);

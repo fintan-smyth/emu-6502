@@ -357,7 +357,6 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 	t_nes		*nes = (t_nes *)cpu->parent_device;
 	t_ppu		*ppu = &nes->ppu;
 	t_apu		*apu = &nes->apu;
-	uint16_t	dma_src = 0;
 	struct square_channel *sq1 = &apu->square[0];
 	struct square_channel *sq2 = &apu->square[1];
 	struct triangle_channel *tri = &apu->triangle;
@@ -369,7 +368,7 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 		return ;
 
 	// IOReg reg = addr & 0xFF;
-	catchup_with_cpu(nes);
+	// catchup_with_cpu(nes);
 	switch (addr) {
 		case (SQ1_VOL): // 0x4000
 			sq1->duty_mode = (val >> 6) & 0x03;
@@ -457,17 +456,11 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 		case (DMC_LEN): // 0x4013
 			return;
 		case (OAMDMA): // 0x4014
-			dma_src = val << 8;
-			cpu->catchup_cycles += 1;
-			catchup_with_cpu(nes);
-			if (ppu->oam_addr != 0)
-				printf("\e[31;1mDMA initiated\e[m OAMADDR: 0x%02X scanline: %d cycle: %d\n", ppu->oam_addr, ppu->scanline, ppu->cycle);
-			for (int i = 0; i < 256; i++)
-			{
-				cpu->catchup_cycles += 2;
-				ppu->oam[ppu->oam_addr++] = read_byte(cpu, dma_src + (uint8_t)i);
-				catchup_with_cpu(nes);
-			}
+			// printf("\e[31;1mDMA initiated\e[m OAMADDR: 0x%02X scanline: %d cycle: %d\n", ppu->oam_addr, ppu->scanline, ppu->cycle);
+			cpu->dma.active = true;
+			cpu->dma.page = val;
+			cpu->dma.step = 0;
+			cpu->dma.offset = 0;
 			return;
 		case (SND_CHN): // 0x4015
 			apu->status = (apu->status & 0xE0) | (val & 0x1F);

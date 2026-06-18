@@ -125,37 +125,24 @@ uint16_t read_word_input(char *prompt)
 	return ret;
 }
 
-void	run_until_addr(t_cpu *cpu, uint16_t addr)
-{
-	while (cpu->pc != addr)
-	{
-		uint16_t old_pc = cpu->pc;
-		uint8_t opcode = read_byte(cpu, cpu->pc);
-		const t_instruct *instr = get_instruction(opcode);
-		execute_instr(cpu, instr);
-		if (cpu->pc == old_pc)
-			break ;
-	}
-}
-
-static inline void	run_until_breakpoint(t_nes *nes, BSTSet_word *breakpoints)
-{
-	uint16_t old_pc = 0xFFFF;
-	g_var = 0;
-	// while (nes->cpu.pc != old_pc && g_var != SIGINT)
-	while (g_var != SIGINT && !WindowShouldClose())
-	{
-		old_pc = nes->cpu.pc;
-		// if (instr->instruction > NOP)
-		// 	break ;
-		nes_step(nes);
-		// printf("\e[2J\e[H");
-		// print_debug_view(cpu, old_pc);
-		if (bstset_word_contains(breakpoints, nes->cpu.pc))
-			break ;
-	}
-	g_var = 0;
-}
+// static inline void	run_until_breakpoint(t_nes *nes, BSTSet_word *breakpoints)
+// {
+// 	uint16_t old_pc = 0xFFFF;
+// 	g_var = 0;
+// 	// while (nes->cpu.pc != old_pc && g_var != SIGINT)
+// 	while (g_var != SIGINT && !WindowShouldClose())
+// 	{
+// 		old_pc = nes->cpu.pc;
+// 		// if (instr->instruction > NOP)
+// 		// 	break ;
+// 		nes_step(nes);
+// 		// printf("\e[2J\e[H");
+// 		// print_debug_view(cpu, old_pc);
+// 		if (bstset_word_contains(breakpoints, nes->cpu.pc))
+// 			break ;
+// 	}
+// 	g_var = 0;
+// }
 
 static inline void	tick_until_breakpoint(t_nes *nes, BSTSet_word *breakpoints)
 {
@@ -298,7 +285,7 @@ int	main(int argc, char **argv)
 		nes_step_alt(&nes);
 		// nes_step(&nes);
 	// debug_loop(&nes);
-END:
+
 	free_cart(nes.cart);
 	free(nes.ppu.screenbuf);
 	reset_term_settings();

@@ -90,7 +90,7 @@ void	mmc1_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_
 	t_nes	*nes = cpu->parent_device;
 	t_cart	*cart = nes->cart;
 
-	catchup_with_cpu(nes);
+	// catchup_with_cpu(nes);
 	if (val & BIT_7)
 	{
 		// Reset shift reg
@@ -224,7 +224,6 @@ void	mmc3_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_
 	bool	even_addr = (addr & 0x1) == 0;
 	uint8_t	bank = (addr >> 13) & 0x03;
 
-	catchup_with_cpu(nes);
 	switch (bank) {
 		case (0):
 			if (even_addr)
@@ -246,7 +245,6 @@ void	mmc3_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_
 			{
 				printf("Setting mirroring...\n");
 				nes->ppu.mirroring = (val & 1) ? MIRROR_HORIZONTAL : MIRROR_VERTICAL;
-				// nes->ppu.mirroring = (val & 1) ? MIRROR_VERTICAL : MIRROR_HORIZONTAL;
 				map_ppu_nametables(&nes->ppu, mmc3_ppu_read_handler, nes->ppu.mirroring);
 			}
 			else
@@ -274,6 +272,7 @@ void	mmc3_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_
 				nes->mapper.mmc3.irq_enabled = true;
 			break;
 	}
+	(void)entry;
 }
 
 void	init_mapper_mmap(t_nes *nes, t_cart *cart)

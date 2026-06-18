@@ -1,3 +1,4 @@
+#include "emu6502.h"
 #include "nes.h"
 #include <raylib.h>
 
@@ -38,7 +39,8 @@ void	handle_player_input(t_nes *nes)
 	{
 		nes->cpu.sp = 0xFF;
 		nes->cpu.cycles = 0;
-		exec_hardware_interrupt(&nes->cpu, 0xFFFC);
+		// exec_hardware_interrupt(&nes->cpu, 0xFFFC);
+		nes->cpu.pending_interrupt = INT_RESET;
 	}
 	if (IsKeyPressed(KEY_P))
 	{

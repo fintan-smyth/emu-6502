@@ -18,22 +18,15 @@ void	init_nes(t_nes *nes)
 	nes->apu.square[0].sweep.up_fix = 1;
 }
 
-void	catchup_with_cpu(t_nes *nes)
-{
-	ppu_tick_for(&nes->ppu, nes->cpu.catchup_cycles * 3);
-	apu_tick_for(&nes->apu, nes->cpu.catchup_cycles);
-	nes->cpu.catchup_cycles = 0;
-}
-
-uint8_t nes_step(t_nes *nes)
-{
-	nes->cpu.irq_pending = nes->apu.frame_count.irq_pending || nes->mapper_irq;
-
-	uint8_t cycles = cpu_step(&nes->cpu);
-	catchup_with_cpu(nes);
-
-	return cycles;
-}
+// uint8_t nes_step(t_nes *nes)
+// {
+// 	nes->cpu.irq_pending = nes->apu.frame_count.irq_pending || nes->mapper_irq;
+//
+// 	uint8_t cycles = cpu_step(&nes->cpu);
+// 	catchup_with_cpu(nes);
+//
+// 	return cycles;
+// }
 
 void	nes_step_alt(t_nes *nes)
 {
@@ -44,11 +37,6 @@ void	nes_step_alt(t_nes *nes)
 	apu_tick_for(&nes->apu, 1);
 }
 
-// void	game_loop(t_nes *nes)
-// {
-//
-// }
-
 uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 {
 	t_cpu	*cpu = arg;
@@ -58,7 +46,6 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 	uint8_t	data = (addr >> 8) & 0xFF;
 	// printf("mapped: %04X reg: %02X\n", addr, reg);
 
-	catchup_with_cpu(nes);
 	switch (reg) {
 		case (PPUCTRL): // 0x2000
 			break;
@@ -104,7 +91,6 @@ void	cpu_ppu_reg_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 	t_ppu	*ppu = &nes->ppu;
 	PPUReg	reg = addr & 0x7;
 
-	catchup_with_cpu(nes);
 	switch (reg) {
 		case (PPUCTRL): // 0x2000
 			SET_BIT(ppu->t, BIT_10, val & BIT_0);
@@ -180,7 +166,6 @@ uint8_t cpu_io_page_read(struct pt_entry *entry, void *arg, uint16_t addr)
 		return out;
 	
 	IOReg reg = addr & 0xFFF;
-	catchup_with_cpu(nes);
 	switch (reg) {
 		case (SND_CHN): // 0x4015
 			out = 0;

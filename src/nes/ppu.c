@@ -626,9 +626,3 @@ void	ppu_tick_for(t_ppu *ppu, uint32_t n_ticks)
 	for (uint32_t i = 0; i < n_ticks; i++)
 		ppu_tick(ppu);
 }
-
-void	ppu_catchup(t_nes *nes)
-{
-	ppu_tick_for(&nes->ppu, nes->cpu.catchup_cycles * 3);
-	nes->cpu.catchup_cycles = 0;
-}

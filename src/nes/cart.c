@@ -8,10 +8,10 @@
 
 void	extract_title(t_cart *cart, const char *path)
 {
-	char *slash = strrchr(path, '/');
-	char *dot = strrchr(path, '.');
+	const char *slash = strrchr(path, '/');
+	const char *dot = strrchr(path, '.');
 	uint32_t start = slash ? slash - path + 1 : 0;
-	uint32_t end = slash ? dot - path : strlen(path);
+	uint32_t end = slash ? (uint32_t)(dot - path) : strlen(path);
 	uint32_t i = 0;
 
 	while (start < end)
@@ -84,7 +84,6 @@ t_cart *read_nes_cart(const char *path)
 		return NULL;
 
 	uint8_t buf[16];
-	struct nes_1_header hdr;
 
 	int ret = read(fd, buf, 16);
 	if (ret < 16)

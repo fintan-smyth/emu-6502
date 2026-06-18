@@ -1,7 +1,6 @@
 #ifndef INSTR_MACROS_H
 # define INSTR_MACROS_H
 
-#include "emu6502.h"
 #define END_INSTRUCTION                                                      \
 	if (cpu->nmi_pending)                                                    \
 	{                                                                        \
@@ -599,7 +598,7 @@
 		cpu->addrbus |= (read_byte(cpu, cpu->pc++) << 8);                    \
 		cpu->pc = cpu->addrbus;                                              \
 		END_INSTRUCTION                                                      \
-		break;                                                               \
+		break;
 
 #define EXEC_JMP_INDIRECT(START_STEP)                                        \
 	case (START_STEP):                                                       \

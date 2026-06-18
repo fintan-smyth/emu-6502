@@ -20,15 +20,48 @@ void dummy(void)
 
 void	cpu_tick(t_cpu *cpu)
 {
+	cpu->cycles++;
+
+	if (cpu->dma.active)
+	{
+		if (cpu->dma.step == 0)
+		{
+			cpu->dma.step++;
+			return;
+		}
+
+		bool odd_cycle = (cpu->cycles % 2) != 0;
+		if (cpu->dma.step == 1 && odd_cycle)
+		{
+			cpu->dma.step++;
+			return ;
+		}
+
+		if (!odd_cycle)
+		{
+			uint16_t read_addr = (cpu->dma.page << 8) | cpu->dma.offset++;
+			cpu->dma.buffer = read_byte(cpu, read_addr);
+		}
+		else
+		{
+			write_byte(cpu, 0x2004, cpu->dma.buffer);
+			if (cpu->dma.offset > 0xFF)
+				cpu->dma.active = false;
+		}
+
+		cpu->dma.step++;
+		return;
+	}
+
 	if (cpu->instr_step == 0)
 	{
 		if (cpu->pending_interrupt != INT_NONE)
 		{
-			if (cpu->pending_interrupt == INT_NMI)
-			{
+			// if (cpu->pending_interrupt == INT_NMI)
+			// {
 				// printf("NMI detected: cycle %lu\n", cpu->cycles);
-				cpu->debug_int = true;
-			}
+				// cpu->debug_int = true;
+			// }
 			read_byte(cpu, cpu->pc);
 			cpu->current_opcode = 0x00;
 			// if (cpu->cycles > 0)
@@ -50,7 +83,6 @@ void	cpu_tick(t_cpu *cpu)
 		}
 		cpu->page_crossed = false;
 		cpu->instr_step++;
-		cpu->cycles++;
 		return ;
 	}
 
@@ -1360,5 +1392,4 @@ void	cpu_tick(t_cpu *cpu)
 			}
 			break;
 	}
-	cpu->cycles++;
 }
