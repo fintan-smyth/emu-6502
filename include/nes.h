@@ -33,7 +33,6 @@
 #define SPRITE_OVERFLOW	0x20
 #define SPRITE_0_HIT	0x40
 #define VBLANK_ACTIVE	0x80
-#define VBLANK_ENABLE	0x80
 
 #define PPUMASK_GREY	0x01
 #define PPUMASK_BG_LEFT	0x02
@@ -44,14 +43,16 @@
 #define PPUMASK_GREEN	0x40
 #define PPUMASK_BLUE 	0x80
 
-#define PPUMASK_GREY	0x01
-#define PPUMASK_BG_LEFT	0x02
-#define PPUMASK_SP_LEFT	0x04
-#define PPUMASK_BG		0x08
-#define PPUMASK_SP		0x10
-#define PPUMASK_RED		0x20
-#define PPUMASK_GREEN	0x40
-#define PPUMASK_BLUE 	0x80
+#define PPUCTRL_NAMETABLE		0x03
+#define PPUCTRL_INCREMENT		0x04
+#define PPUCTRL_SPRITE_PTABLE	0x08
+#define PPUCTRL_BG_PTABLE		0x10
+#define PPUCTRL_SPRITE_SIZE		0x20
+#define PPUCTRL_VBLANK_ENABLE	0x80
+
+#define SPRITE_PRIORITY	0x20
+#define SPRITE_H_FLIP	0x40
+#define SPRITE_V_FLIP	0x80
 
 #define CHANNEL_SQ1		0x01
 #define CHANNEL_SQ2		0x02
@@ -157,42 +158,75 @@ typedef enum e_ioreg
 	IOREG_MAX,
 }	IOReg;
 
+typedef enum
+{
+	FIND_SPRITES,
+	COPY_DATA,
+	OVERFLOW,
+	COMPLETE,
+} SpriteEvalState;
+
 typedef struct s_sprite
 {
-	uint8_t x;
-	uint8_t y;
+	uint8_t	y;
 	uint8_t	tile_id;
-	uint8_t attr;
+	uint8_t	attr;
+	uint8_t	x;
 	uint8_t	pixels[8];
-	bool	sprite_0;
+	uint8_t	oam_index;
 }	t_sprite;
 
 typedef struct s_nes t_nes;
 
 typedef struct s_ppu
 {
-	t_nes		*nes;
-	uint8_t		registers[8];
-	uint16_t	cycle;
-	uint16_t	scanline;
-	uint8_t		mirroring;
-	uint16_t	v;
-	uint16_t	t;
-	uint8_t		x;
-	uint8_t		w;
-	uint8_t		readbuf;
-	bool		*nmi_pin;
-	bool		nmi_state_prev;
-	uint8_t		vram[0x800];
-	uint8_t		oam[0x100];
-	uint8_t		oam_addr;
-	t_sprite	secondary_oam[0x08];
-	uint8_t		secondary_count;
-	uint8_t		palette[0x20];
+	t_nes			*nes;
+	uint8_t			registers[8];
+	uint16_t		cycle;
+	uint16_t		scanline;
+	uint8_t			mirroring;
+	uint16_t		v;
+	uint16_t		t;
+	uint8_t			x;
+	uint8_t			w;
+	uint8_t			readbuf;
+	bool			*nmi_pin;
+	bool			nmi_state_prev;
+	uint8_t			vram[0x800];
+	uint8_t			oam[0x100];
+	uint8_t			oam_addr;
+	uint8_t			oam_ptr;
+	uint8_t			oam_byte_offset;
+	t_sprite		secondary_oam[0x08];
+	uint8_t			sec_oam_ptr;
+	SpriteEvalState	evalstate;
+	uint8_t			secondary_count;
+	uint8_t			palette[0x20];
+	uint32_t		*screenbuf;
+	Texture2D		screen_tex;
+	size_t			total_cycles;
+	uint8_t			io_latch;
+	struct {
+		uint16_t	pattern_lo;
+		uint16_t	pattern_hi;
+		uint16_t	attr_lo;
+		uint16_t	attr_hi;
+		uint8_t		next_nt_byte;
+		uint8_t		next_attr_byte;
+		uint8_t		next_pt_lo;
+		uint8_t		next_pt_hi;
+	}	bg_shift;
+	struct {
+		uint8_t	n_sprites;
+		uint8_t	pattern_lo[8];
+		uint8_t	pattern_hi[8];
+		uint8_t	attr[8];
+		uint8_t	x_counter[8];
+		bool	sprite_0[8];
+		uint8_t	tmp_pattern_lo;
+		uint8_t	tmp_pattern_hi;
+	}	sprite_shift;
 	struct pt_entry	pagetable[0x10];
-	uint32_t	*screenbuf;
-	Texture2D	screen_tex;
-	size_t		total_cycles;
 } t_ppu;
 
 enum

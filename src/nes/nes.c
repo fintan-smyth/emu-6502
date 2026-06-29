@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <raylib.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -43,7 +42,7 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 	t_nes	*nes = (t_nes *)cpu->parent_device;
 	t_ppu	*ppu = &nes->ppu;
 	PPUReg	reg = addr & 0x7;
-	uint8_t	data = (addr >> 8) & 0xFF;
+	uint8_t	data = ppu->io_latch;
 	// printf("mapped: %04X reg: %02X\n", addr, reg);
 
 	switch (reg) {
@@ -52,9 +51,9 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 		case (PPUMASK): // 0x2001
 			break;
 		case (PPUSTATUS): // 0x2002
-			data = ppu->registers[PPUSTATUS];
+			data = (data & 0x1F) | (ppu->registers[PPUSTATUS] & 0xE0);
 			// printf("before: 0x%02X\n", ppu->registers[PPUSTATUS]);
-			SET_BIT(ppu->registers[PPUSTATUS], VBLANK_ENABLE, 0);
+			SET_BIT(ppu->registers[PPUSTATUS], VBLANK_ACTIVE, 0);
 			// printf("after:  0x%02X\n", ppu->registers[PPUSTATUS]);
 			// printf("\e[32;1mPPUSTATUS Read\e[m: scanline %3d cycle %3d\n", ppu->scanline, ppu->cycle);
 			ppu->w = 0;
@@ -76,7 +75,7 @@ uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)
 				data = ppu->readbuf;
 			}
 			// printf("PPUDATA read: 0x%02X ppu->v: 0x%04X\n", data, ppu->v);
-			ppu->v += (ppu->registers[PPUCTRL] & BIT_2) ? 32 : 1;
+			ppu->v += (ppu->registers[PPUCTRL] & PPUCTRL_INCREMENT) ? 32 : 1;
 			break;
 	}
 
@@ -91,6 +90,7 @@ void	cpu_ppu_reg_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 	t_ppu	*ppu = &nes->ppu;
 	PPUReg	reg = addr & 0x7;
 
+	ppu->io_latch = val;
 	switch (reg) {
 		case (PPUCTRL): // 0x2000
 			SET_BIT(ppu->t, BIT_10, val & BIT_0);
@@ -100,8 +100,6 @@ void	cpu_ppu_reg_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 		case (PPUMASK): // 0x2001
 			break;
 		case (PPUSTATUS): // 0x2002
-			printf("\e[31;1mError\e[m: %s: Invalid write\n", get_ppureg_str(reg));
-			exit(1);
 			break;
 		case (OAMADDR): // 0x2003
 			ppu->oam_addr = val;
@@ -147,7 +145,7 @@ void	cpu_ppu_reg_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 		case (PPUDATA): // 0x2007
 			ppu_write(ppu, ppu->v & 0x3FFF, val);
 			// printf("PPUDATA write: 0x%02X ppu->v: 0x%04X\n", val, ppu->v);
-			ppu->v += (ppu->registers[PPUCTRL] & BIT_2) ? 32 : 1;
+			ppu->v += (ppu->registers[PPUCTRL] & PPUCTRL_INCREMENT) ? 32 : 1;
 			break;
 	}
 	entry->memory[reg] = val;
@@ -159,7 +157,7 @@ uint8_t cpu_io_page_read(struct pt_entry *entry, void *arg, uint16_t addr)
 	t_nes	*nes = (t_nes *)cpu->parent_device;
 	t_apu	*apu = &nes->apu;
 	// t_ppu	*ppu = &((t_nes *)cpu->parent_device)->ppu;
-	uint8_t	out = (addr >> 8) & 0xFF;
+	uint8_t	out = cpu->databus;
 
 	addr &= 0xFFF;
 	if (addr > 0x17)

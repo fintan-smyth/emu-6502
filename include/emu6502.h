@@ -230,6 +230,8 @@ typedef struct t_cpu
 			uint8_t	unflipped;
 			int8_t	rel;
 		};
+		uint16_t	addr;
+		uint8_t		data;
 	}	tmp;
 	struct {
 		bool		active;

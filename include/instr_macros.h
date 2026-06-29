@@ -16,7 +16,7 @@
 
 
 #define EXEC_LDA_CORE                                                        \
-	cpu->a = cpu->databus;                                                   \
+	cpu->a = cpu->tmp.data;                                                   \
 	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);                         \
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 
@@ -24,18 +24,18 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_LDA_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_LDX_CORE                                                        \
-	cpu->x = cpu->databus;                                                   \
+	cpu->x = cpu->tmp.data;                                                   \
 	SET_BIT(cpu->status, FLAG_N, cpu->x & SIGN_BIT);                         \
 	SET_BIT(cpu->status, FLAG_Z, cpu->x == 0);
 
@@ -43,18 +43,18 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_LDX_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_LDY_CORE                                                        \
-	cpu->y = cpu->databus;                                                   \
+	cpu->y = cpu->tmp.data;                                                   \
 	SET_BIT(cpu->status, FLAG_N, cpu->y & SIGN_BIT);                         \
 	SET_BIT(cpu->status, FLAG_Z, cpu->y == 0);
 
@@ -62,31 +62,31 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_LDY_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_STA(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		write_byte(cpu, cpu->addrbus, cpu->a);                               \
+		write_byte(cpu, cpu->tmp.addr, cpu->a);                               \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_STX(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		write_byte(cpu, cpu->addrbus, cpu->x);                               \
+		write_byte(cpu, cpu->tmp.addr, cpu->x);                               \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_STY(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		write_byte(cpu, cpu->addrbus, cpu->y);                               \
+		write_byte(cpu, cpu->tmp.addr, cpu->y);                               \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -174,8 +174,8 @@
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		cpu->databus = read_byte(cpu, cpu->sp | 0x100);                      \
-		cpu->status = (cpu->databus | FLAG_E) & ~FLAG_B;                     \
+		cpu->tmp.data = read_byte(cpu, cpu->sp | 0x100);                      \
+		cpu->status = (cpu->tmp.data | FLAG_E) & ~FLAG_B;                     \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -189,16 +189,16 @@
 
 #define EXEC_ASL(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_ASL_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_ASL_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -214,16 +214,16 @@
 
 #define EXEC_LSR(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_LSR_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_LSR_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -241,16 +241,16 @@
 
 #define EXEC_ROL(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_ROL_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_ROL_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -268,16 +268,16 @@
 
 #define EXEC_ROR(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_ROR_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_ROR_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -286,7 +286,7 @@
 	END_INSTRUCTION                                                          \
 
 #define EXEC_AND_CORE                                                        \
-	cpu->a &= cpu->databus;                                                  \
+	cpu->a &= cpu->tmp.data;                                                  \
 	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);                         \
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 
@@ -294,31 +294,31 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_AND_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_BIT_CORE                                                        \
-	SET_BIT(cpu->status, FLAG_N, cpu->databus & SIGN_BIT);                   \
-	SET_BIT(cpu->status, FLAG_V, cpu->databus & BIT_6);                      \
-	cpu->databus &= cpu->a;                                                  \
-	SET_BIT(cpu->status, FLAG_Z, cpu->databus == 0);
+	SET_BIT(cpu->status, FLAG_N, cpu->tmp.data & SIGN_BIT);                   \
+	SET_BIT(cpu->status, FLAG_V, cpu->tmp.data & BIT_6);                      \
+	cpu->tmp.data &= cpu->a;                                                  \
+	SET_BIT(cpu->status, FLAG_Z, cpu->tmp.data == 0);
 
 #define EXEC_BIT(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_BIT_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_EOR_CORE                                                        \
-	cpu->a ^= cpu->databus;                                                  \
+	cpu->a ^= cpu->tmp.data;                                                  \
 	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);                         \
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 
@@ -326,18 +326,18 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_EOR_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_ORA_CORE                                                        \
-	cpu->a |= cpu->databus;                                                  \
+	cpu->a |= cpu->tmp.data;                                                  \
 	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);                         \
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 
@@ -345,19 +345,19 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_ORA_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_ADC_CORE                                                        \
-	cpu->tmp.result = cpu->a + cpu->databus + (cpu->status & FLAG_C);        \
-	cpu->tmp.overflow = ~(cpu->databus ^ cpu->a) & (cpu->tmp.result ^ cpu->a) & SIGN_BIT;\
+	cpu->tmp.result = cpu->a + cpu->tmp.data + (cpu->status & FLAG_C);        \
+	cpu->tmp.overflow = ~(cpu->tmp.data ^ cpu->a) & (cpu->tmp.result ^ cpu->a) & SIGN_BIT;\
 	SET_BIT(cpu->status, FLAG_V, cpu->tmp.overflow);                         \
 	SET_BIT(cpu->status, FLAG_N, cpu->tmp.result & SIGN_BIT);                \
 	SET_BIT(cpu->status, FLAG_Z, (cpu->tmp.result & 0xFF) == 0);             \
@@ -368,25 +368,25 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_ADC_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_ADC_DECIMAL_CORE                                                \
-	cpu->tmp.result = cpu->a + cpu->databus + (cpu->status & FLAG_C);        \
-	cpu->tmp.overflow = ~(cpu->databus ^ cpu->a) & (cpu->tmp.result ^ cpu->a) & SIGN_BIT;\
+	cpu->tmp.result = cpu->a + cpu->tmp.data + (cpu->status & FLAG_C);        \
+	cpu->tmp.overflow = ~(cpu->tmp.data ^ cpu->a) & (cpu->tmp.result ^ cpu->a) & SIGN_BIT;\
 	SET_BIT(cpu->status, FLAG_V, cpu->tmp.overflow);                         \
 	SET_BIT(cpu->status, FLAG_N, cpu->tmp.result & SIGN_BIT);                \
 	SET_BIT(cpu->status, FLAG_Z, (cpu->tmp.result & 0xFF) == 0);             \
 	if (cpu->status & FLAG_D)                                                \
 	{                                                                        \
-		if ((cpu->tmp.result & 0x0F) > 9 || ((cpu->a ^ cpu->databus ^ cpu->tmp.result) & 0x10))\
+		if ((cpu->tmp.result & 0x0F) > 9 || ((cpu->a ^ cpu->tmp.data ^ cpu->tmp.result) & 0x10))\
 			cpu->tmp.result += 0x06;                                         \
 		SET_BIT(cpu->status, FLAG_C, cpu->tmp.result > 0x9F || (cpu->tmp.result & 0x100));\
 		if (cpu->status & FLAG_C)                                            \
@@ -399,54 +399,54 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_ADC_DECIMAL_CORE                                                \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_CMP_CORE(REGISTER)                                              \
-	SET_BIT(cpu->status, FLAG_C, cpu->databus <= REGISTER);                  \
-	SET_BIT(cpu->status, FLAG_Z, cpu->databus == REGISTER);                  \
-	cpu->databus = REGISTER - cpu->databus;                                  \
-	SET_BIT(cpu->status, FLAG_N, cpu->databus & SIGN_BIT);
+	SET_BIT(cpu->status, FLAG_C, cpu->tmp.data <= REGISTER);                  \
+	SET_BIT(cpu->status, FLAG_Z, cpu->tmp.data == REGISTER);                  \
+	cpu->tmp.data = REGISTER - cpu->tmp.data;                                  \
+	SET_BIT(cpu->status, FLAG_N, cpu->tmp.data & SIGN_BIT);
 
 #define EXEC_CMP(START_STEP)                                                 \
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_CMP_CORE(cpu->a)                                                \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_CPX(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_CMP_CORE(cpu->x)                                                \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_CPY(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_CMP_CORE(cpu->y)                                                \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_SBC_CORE                                                        \
-	cpu->databus = ~cpu->databus;                                            \
-	cpu->tmp.result = cpu->a + cpu->databus + (cpu->status & FLAG_C);        \
-	cpu->tmp.overflow = ~(cpu->databus ^ cpu->a) & (cpu->tmp.result ^ cpu->a) & SIGN_BIT;\
+	cpu->tmp.data = ~cpu->tmp.data;                                            \
+	cpu->tmp.result = cpu->a + cpu->tmp.data + (cpu->status & FLAG_C);        \
+	cpu->tmp.overflow = ~(cpu->tmp.data ^ cpu->a) & (cpu->tmp.result ^ cpu->a) & SIGN_BIT;\
 	SET_BIT(cpu->status, FLAG_V, cpu->tmp.overflow);                         \
 	SET_BIT(cpu->status, FLAG_N, cpu->tmp.result & SIGN_BIT);                \
 	SET_BIT(cpu->status, FLAG_Z, (cpu->tmp.result & 0xFF) == 0);             \
@@ -457,21 +457,21 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_SBC_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_SBC_DECIMAL_CORE                                                \
-	cpu->tmp.unflipped = cpu->databus;                                       \
-	cpu->databus = ~cpu->databus;                                            \
-	cpu->tmp.result = cpu->a + cpu->databus + (cpu->status & FLAG_C);        \
-	cpu->tmp.overflow = ~(cpu->databus ^ cpu->a) & (cpu->tmp.result ^ cpu->a) & SIGN_BIT;\
+	cpu->tmp.unflipped = cpu->tmp.data;                                       \
+	cpu->tmp.data = ~cpu->tmp.data;                                            \
+	cpu->tmp.result = cpu->a + cpu->tmp.data + (cpu->status & FLAG_C);        \
+	cpu->tmp.overflow = ~(cpu->tmp.data ^ cpu->a) & (cpu->tmp.result ^ cpu->a) & SIGN_BIT;\
 	SET_BIT(cpu->status, FLAG_V, cpu->tmp.overflow);                         \
 	SET_BIT(cpu->status, FLAG_N, cpu->tmp.result & SIGN_BIT);                \
 	SET_BIT(cpu->status, FLAG_Z, (cpu->tmp.result & 0xFF) == 0);             \
@@ -489,12 +489,12 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_SBC_DECIMAL_CORE                                                \
 		END_INSTRUCTION                                                      \
 		break ;
@@ -506,16 +506,16 @@
 
 #define EXEC_DEC(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_DEC_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_DEC_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -534,16 +534,16 @@
 
 #define EXEC_INC(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_INC_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_INC_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -579,51 +579,51 @@
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 4):                                                   \
-		cpu->addrbus = read_byte(cpu, cpu->interrupt_vector);                \
+		cpu->tmp.addr = read_byte(cpu, cpu->interrupt_vector);                \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 5):                                                   \
-		cpu->addrbus |= (read_byte(cpu, cpu->interrupt_vector + 1) << 8);    \
-		cpu->pc = cpu->addrbus;                                              \
+		cpu->tmp.addr |= (read_byte(cpu, cpu->interrupt_vector + 1) << 8);    \
+		cpu->pc = cpu->tmp.addr;                                              \
 		cpu->pending_interrupt = INT_NONE;                                   \
 		cpu->instr_step = 0;                                                 \
 		break ;
 
 #define EXEC_JMP(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->addrbus = read_byte(cpu, cpu->pc++) & 0xFF;                     \
+		cpu->tmp.addr = read_byte(cpu, cpu->pc++) & 0xFF;                     \
 		cpu->instr_step++;                                                   \
 		break;                                                               \
 	case (START_STEP + 1):                                                   \
-		cpu->addrbus |= (read_byte(cpu, cpu->pc++) << 8);                    \
-		cpu->pc = cpu->addrbus;                                              \
+		cpu->tmp.addr |= (read_byte(cpu, cpu->pc++) << 8);                    \
+		cpu->pc = cpu->tmp.addr;                                              \
 		END_INSTRUCTION                                                      \
 		break;
 
 #define EXEC_JMP_INDIRECT(START_STEP)                                        \
 	case (START_STEP):                                                       \
-		cpu->addrbus = read_byte(cpu, cpu->pc++) & 0xFF;                     \
+		cpu->tmp.addr = read_byte(cpu, cpu->pc++) & 0xFF;                     \
 		cpu->instr_step++;                                                   \
 		break;                                                               \
 	case (START_STEP + 1):                                                   \
-		cpu->addrbus |= (read_byte(cpu, cpu->pc++) << 8);                    \
+		cpu->tmp.addr |= (read_byte(cpu, cpu->pc++) << 8);                    \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		cpu->pc = read_byte(cpu, cpu->addrbus) & 0xFF;                       \
+		cpu->pc = read_byte(cpu, cpu->tmp.addr) & 0xFF;                       \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 3):                                                   \
-		if ((cpu->addrbus & 0xFF) == 0xFF)                                   \
-			cpu->pc |= read_byte(cpu, cpu->addrbus & 0xFF00) << 8;           \
+		if ((cpu->tmp.addr & 0xFF) == 0xFF)                                   \
+			cpu->pc |= read_byte(cpu, cpu->tmp.addr & 0xFF00) << 8;           \
 		else                                                                 \
-			cpu->pc |= read_byte(cpu, cpu->addrbus + 1) << 8;                \
+			cpu->pc |= read_byte(cpu, cpu->tmp.addr + 1) << 8;                \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_JSR(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->addrbus = read_byte(cpu, cpu->pc++) & 0xFF;                     \
+		cpu->tmp.addr = read_byte(cpu, cpu->pc++) & 0xFF;                     \
 		cpu->instr_step++;                                                   \
 		break;                                                               \
 	case (START_STEP + 1):                                                   \
@@ -639,8 +639,8 @@
 		cpu->instr_step++;                                                   \
 		break;                                                               \
 	case (START_STEP + 4):                                                   \
-		cpu->addrbus |= (read_byte(cpu, cpu->pc) << 8);                      \
-		cpu->pc = cpu->addrbus;                                              \
+		cpu->tmp.addr |= (read_byte(cpu, cpu->pc) << 8);                      \
+		cpu->pc = cpu->tmp.addr;                                              \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -658,12 +658,12 @@
 		cpu->instr_step++;                                                   \
 		break;                                                               \
 	case (START_STEP + 3):                                                   \
-		cpu->addrbus = read_byte(cpu, cpu->sp++ | 0x100);                    \
+		cpu->tmp.addr = read_byte(cpu, cpu->sp++ | 0x100);                    \
 		cpu->instr_step++;                                                   \
 		break;                                                               \
 	case (START_STEP + 4):                                                   \
-		cpu->addrbus |= (read_byte(cpu, cpu->sp | 0x100) << 8);              \
-		cpu->pc = cpu->addrbus;                                              \
+		cpu->tmp.addr |= (read_byte(cpu, cpu->sp | 0x100) << 8);              \
+		cpu->pc = cpu->tmp.addr;                                              \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -677,12 +677,12 @@
 		cpu->instr_step++;                                                   \
 		break;                                                               \
 	case (START_STEP + 2):                                                   \
-		cpu->addrbus = read_byte(cpu, cpu->sp++ | 0x100);                    \
+		cpu->tmp.addr = read_byte(cpu, cpu->sp++ | 0x100);                    \
 		cpu->instr_step++;                                                   \
 		break;                                                               \
 	case (START_STEP + 3):                                                   \
-		cpu->addrbus |= (read_byte(cpu, cpu->sp | 0x100) << 8);              \
-		cpu->pc = cpu->addrbus;                                              \
+		cpu->tmp.addr |= (read_byte(cpu, cpu->sp | 0x100) << 8);              \
+		cpu->pc = cpu->tmp.addr;                                              \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 4):                                                   \
@@ -750,7 +750,7 @@
 	END_INSTRUCTION
 
 #define EXEC_NOP_CORE                                                        \
-	read_byte(cpu, cpu->addrbus);
+	read_byte(cpu, cpu->tmp.addr);
 
 #define EXEC_NOP                                                             \
 	read_byte(cpu, cpu->pc);                                                 \
@@ -771,8 +771,8 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
@@ -782,71 +782,71 @@
 
 #define EXEC_SLO(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_ASL_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_ASL_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		EXEC_ORA_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_RLA(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_ROL_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_ROL_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		EXEC_AND_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_SRE(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_LSR_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_LSR_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		EXEC_EOR_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_RRA(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_ROR_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_ROR_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		EXEC_ADC_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_SAX(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		write_byte(cpu, cpu->addrbus, cpu->a & cpu->x);                      \
+		write_byte(cpu, cpu->tmp.addr, cpu->a & cpu->x);                      \
 		END_INSTRUCTION                                                      \
 		break ;
 
@@ -866,8 +866,8 @@
 		break ;
 
 #define EXEC_LAX_CORE                                                        \
-	cpu->a = cpu->databus;                                                   \
-	cpu->x = cpu->databus;                                                   \
+	cpu->a = cpu->tmp.data;                                                   \
+	cpu->x = cpu->tmp.data;                                                   \
 	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);                         \
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);
 
@@ -875,34 +875,34 @@
 	case (START_STEP):                                                       \
 		if (cpu->page_crossed)                                               \
 		{                                                                    \
-			read_byte(cpu, cpu->addrbus);                                    \
-			cpu->addrbus += 0x100;                                           \
+			read_byte(cpu, cpu->tmp.addr);                                    \
+			cpu->tmp.addr += 0x100;                                           \
 			cpu->page_crossed = false;                                       \
 			break ;                                                          \
 		}                                                                    \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		EXEC_LAX_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_DCP(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_DEC_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_DEC_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		EXEC_CMP_CORE(cpu->a)                                                \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_ARR_CORE                                                        \
-	cpu->a &= cpu->databus;                                                  \
+	cpu->a &= cpu->tmp.data;                                                  \
 	cpu->a >>= 1;                                                            \
 	SET_BIT(cpu->status, FLAG_N, cpu->a & SIGN_BIT);                         \
 	SET_BIT(cpu->status, FLAG_Z, cpu->a == 0);                               \
@@ -933,26 +933,26 @@
 #define EXEC_SBX_CORE                                                        \
 	cpu->x &= cpu->a;                                                        \
 	EXEC_CMP_CORE(cpu->x);                                                   \
-	cpu->x = cpu->databus;
+	cpu->x = cpu->tmp.data;
 
 #define EXEC_ISC(START_STEP)                                                 \
 	case (START_STEP):                                                       \
-		cpu->databus = read_byte(cpu, cpu->addrbus);                         \
+		cpu->tmp.data = read_byte(cpu, cpu->tmp.addr);                         \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 1):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
-		EXEC_INC_CORE(cpu->databus)                                          \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
+		EXEC_INC_CORE(cpu->tmp.data)                                          \
 		cpu->instr_step++;                                                   \
 		break ;                                                              \
 	case (START_STEP + 2):                                                   \
-		write_byte(cpu, cpu->addrbus, cpu->databus);                         \
+		write_byte(cpu, cpu->tmp.addr, cpu->tmp.data);                         \
 		EXEC_SBC_CORE                                                        \
 		END_INSTRUCTION                                                      \
 		break ;
 
 #define EXEC_ASR_CORE                                                        \
-	cpu->a &= cpu->databus;                                                  \
+	cpu->a &= cpu->tmp.data;                                                  \
 	EXEC_LSR_CORE(cpu->a);
 
 #define EXEC_ANC_CORE                                                        \

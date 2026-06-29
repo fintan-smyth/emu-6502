@@ -25,15 +25,16 @@ uint8_t	read_byte(t_cpu *cpu, size_t addr)
 	uint8_t	pageno = addr >> 10;
 	struct pt_entry *entry = &cpu->pagetable[pageno];
 
+	cpu->addrbus = addr;
 	// printf("read addr: %04zX\n", addr);
 	if (entry->read_handler)
-		return entry->read_handler(entry, cpu, addr);
+		cpu->databus = entry->read_handler(entry, cpu, addr);
 
-	if (entry->memory)
-		return entry->memory[addr & 0x03FF];
+	else if (entry->memory)
+		cpu->databus = entry->memory[addr & 0x03FF];
 
 	// Simulate open bus
-	return (addr >> 8) & 0xFF;
+	return cpu->databus;
 }
 
 uint16_t	read_word(t_cpu *cpu, size_t addr)
@@ -63,6 +64,8 @@ void	write_byte(t_cpu *cpu, size_t addr, uint8_t value)
 	uint8_t	pageno = addr >> 10;
 	struct pt_entry *entry = &cpu->pagetable[pageno];
 
+	cpu->addrbus = addr;
+	cpu->databus = value;
 	if (entry->write_handler)
 		entry->write_handler(entry, cpu, addr, value);
 }

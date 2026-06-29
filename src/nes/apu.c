@@ -355,7 +355,7 @@ void cpu_io_page_write(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t
 {
 	t_cpu		*cpu = arg;
 	t_nes		*nes = (t_nes *)cpu->parent_device;
-	t_ppu		*ppu = &nes->ppu;
+	// t_ppu		*ppu = &nes->ppu;
 	t_apu		*apu = &nes->apu;
 	struct square_channel *sq1 = &apu->square[0];
 	struct square_channel *sq2 = &apu->square[1];

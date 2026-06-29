@@ -399,7 +399,7 @@ void	get_sprite_pixel(t_ppu *ppu, uint32_t x_pos, bool bg_opaque, uint8_t *col_i
 			// if (ppu->scanline == 0)
 			// 	printf("DRAW: pos: (%d, %d) col: %d\n", x_pos, sprite->y, pixel);
 
-			if (sprite->sprite_0 && bg_opaque && x_pos != 255)
+			if (sprite->oam_index == 0 && bg_opaque && x_pos != 255)
 			{
 				ppu->registers[PPUSTATUS] |= SPRITE_0_HIT;
 				// printf("SPRITE_0 HIT! pos: (%d, %d)\n", x_pos, ppu->scanline);
@@ -495,7 +495,7 @@ void	get_sprite_data(t_ppu *ppu, t_sprite *sprite, uint32_t oam_index)
 	sprite->tile_id = ppu->oam[i + 1];
 	sprite->attr = ppu->oam[i + 2];
 	sprite->x = ppu->oam[i + 3];
-	sprite->sprite_0 = (oam_index == 0);
+	sprite->oam_index = oam_index;
 }
 
 void	find_scanline_sprites(t_ppu *ppu)
@@ -540,49 +540,455 @@ void	find_scanline_sprites(t_ppu *ppu)
 	}
 }
 
-void ppu_tick(t_ppu *ppu)
+void	ppu_render_cycle_batched(t_ppu *ppu)
 {
-	// if ((ppu->scanline < 240 || ppu->scanline == 261))
-	if ((ppu->scanline < 240 || ppu->scanline == 261) && (ppu->registers[PPUMASK] & (PPUMASK_BG | PPUMASK_SP)))
+	if (ppu->cycle % 8 == 0 && ppu->cycle <= 264)
 	{
-		if (ppu->cycle % 8 == 0 && ppu->cycle >= 1 && ppu->cycle <= 264)
+		ppu_draw_tile_row(ppu);
+		// if (ppu->cycle < 264)
+			ppu_increment_x(ppu);
+		if (ppu->cycle == 264)
+			ppu_increment_y(ppu);
+	}
+
+	if (ppu->cycle == 265)
+	{
+		ppu->v = (ppu->v & ~0x41F) | (ppu->t & 0x41F);
+		find_scanline_sprites(ppu);
+
+		if (ppu->nes->cart->mapper_id == MMC3)
 		{
-			ppu_draw_tile_row(ppu);
-			// if (ppu->cycle < 264)
-				ppu_increment_x(ppu);
-			if (ppu->cycle == 264)
-				ppu_increment_y(ppu);
+			bool sprite_a12 = (ppu->registers[PPUCTRL] & 0x08) != 0;
+			size_t cpu_cycle = ppu->total_cycles / 3;
+			mmc3_clock_a12(ppu->nes, sprite_a12, cpu_cycle);
 		}
+	}
+	if (ppu->cycle >= 265 && ppu->cycle <= 320)
+	{
+		// printf("OAMADDR reset scanline: %d cycle: %d\n", ppu->scanline, ppu->cycle);
+		ppu->oam_addr = 0;
+	}
 
-		if (ppu->cycle == 265)
+	if (ppu->cycle == 320 && ppu->nes->cart->mapper_id == MMC3)
+	{
+		bool bg_a12 = (ppu->registers[PPUCTRL] & 0x10) != 0;
+		size_t cpu_cycle = ppu->total_cycles / 3;
+		mmc3_clock_a12(ppu->nes, bg_a12, cpu_cycle);
+	}
+
+	if (ppu->scanline == 261 && ppu->cycle >= 280 && ppu->cycle <= 304)
+	{
+		ppu->v = (ppu->v & ~0x7BE0) | (ppu->t & 0x7BE0);
+	}
+}
+
+static inline void refill_shift_registers(t_ppu *ppu)
+{
+	ppu->bg_shift.pattern_lo = (ppu->bg_shift.pattern_lo & 0xFF00) | ppu->bg_shift.next_pt_lo;
+	ppu->bg_shift.pattern_hi = (ppu->bg_shift.pattern_hi & 0xFF00) | ppu->bg_shift.next_pt_hi;
+	ppu->bg_shift.attr_lo = (ppu->bg_shift.attr_lo & 0xFF00) | ((ppu->bg_shift.next_attr_byte & 0x1) ? 0xFF : 0x00);
+	ppu->bg_shift.attr_hi = (ppu->bg_shift.attr_hi & 0xFF00) | ((ppu->bg_shift.next_attr_byte & 0x2) ? 0xFF : 0x00);
+}
+
+static inline void fix_attr_byte(t_ppu *ppu)
+{
+	uint8_t shift_amount = (ppu->v & 0x02) | ((ppu->v >> 4) & 0x04);
+	ppu->bg_shift.next_attr_byte = (ppu->bg_shift.next_attr_byte >> shift_amount) & 0x03;
+}
+
+void ppu_output_pixel(t_ppu *ppu)
+{
+	uint8_t		pixel_x = ppu->cycle - 1;
+	uint8_t		pixel_y = ppu->scanline;
+	uint16_t	bit_select = 0x8000 >> ppu->x;
+
+	uint8_t		pixel_lo = (ppu->bg_shift.pattern_lo & bit_select) ? 1 : 0;
+	uint8_t		pixel_hi = (ppu->bg_shift.pattern_hi & bit_select) ? 1 : 0;
+	uint8_t		bg_col = (pixel_hi << 1) | pixel_lo;
+
+	uint8_t		attr_lo = (ppu->bg_shift.attr_lo & bit_select) ? 1 : 0;
+	uint8_t		attr_hi = (ppu->bg_shift.attr_hi & bit_select) ? 1 : 0;
+	uint8_t		bg_palette = (attr_hi << 1) | attr_lo;
+
+	bool draw_bg = (ppu->registers[PPUMASK] & PPUMASK_BG) && ((ppu->registers[PPUMASK] & PPUMASK_BG_LEFT) || (pixel_x > 7));
+
+	if (!draw_bg)
+		bg_col = 0;
+
+	uint8_t	sprite_col = 0;
+	uint8_t	sprite_palette = 0;
+	bool	sprite_priority = false;
+	bool	sprite_0 = false;
+
+	bool draw_sprite = (ppu->registers[PPUMASK] & PPUMASK_SP) && ((ppu->registers[PPUMASK] & PPUMASK_SP_LEFT) || (pixel_x > 7));
+
+	if (draw_sprite)
+	{
+		for (int i = 0; i < 8; i++)
 		{
-			ppu->v = (ppu->v & ~0x41F) | (ppu->t & 0x41F);
-			find_scanline_sprites(ppu);
-
-			if (ppu->nes->cart->mapper_id == MMC3)
+			if (ppu->sprite_shift.x_counter[i] == 0)
 			{
-				bool sprite_a12 = (ppu->registers[PPUCTRL] & 0x08) != 0;
-				size_t cpu_cycle = ppu->total_cycles / 3;
-				mmc3_clock_a12(ppu->nes, sprite_a12, cpu_cycle);
+				pixel_lo = (ppu->sprite_shift.pattern_lo[i] & 0x80) ? 1 : 0;
+				pixel_hi = (ppu->sprite_shift.pattern_hi[i] & 0x80) ? 1 : 0;
+				sprite_col = (pixel_hi << 1) | pixel_lo;
+
+				if (sprite_col != 0)
+				{
+					sprite_palette = (ppu->sprite_shift.attr[i] & 0x03) + 4;
+					sprite_priority = (ppu->sprite_shift.attr[i] & SPRITE_PRIORITY) == 0;
+					sprite_0 = ppu->sprite_shift.sprite_0[i];
+					break;
+				}
 			}
 		}
-		if (ppu->cycle >= 265 && ppu->cycle <= 320)
+	}
+
+	uint8_t final_col = 0;
+	uint8_t final_palette = 0;
+	uint8_t pixel_mux = ((bg_col > 0) << 1) | (sprite_col > 0);
+
+	switch (pixel_mux) {
+		case (0):
+			break;
+		case (1):
+			final_col = sprite_col;
+			final_palette = sprite_palette;
+			break;
+		case (2):
+			final_col = bg_col;
+			final_palette = bg_palette;
+			break;
+		case (3):
+			if (sprite_priority)
+			{
+				final_col = sprite_col;
+				final_palette = sprite_palette;
+			}
+			else
+			{
+				final_col = bg_col;
+				final_palette = bg_palette;
+			}
+
+			if (sprite_0 && pixel_x != 255)
+				ppu->registers[PPUSTATUS] |= SPRITE_0_HIT;
+			break;
+	}
+
+	uint8_t col_index;
+	if (final_col == 0)
+		col_index = ppu_read(ppu, 0x3F00);
+	else
+		col_index = ppu_read(ppu, 0x3F00 | (final_palette << 2) | final_col);
+
+	if (ppu->registers[PPUMASK] & PPUMASK_GREY)
+		col_index &= 0x30;
+
+	Color col = palette_alt[col_index & 0x3F];
+	// if (pixel_y < 240)
+		draw_pixel(ppu, pixel_x, pixel_y, *(uint32_t *)&col);
+}
+
+void	ppu_fetch_bg(t_ppu *ppu, uint16_t cycle, bool is_shifting)
+{
+	uint8_t sub_cycle = (cycle - 1) % 8;
+	uint16_t addr;
+
+	switch (sub_cycle) {
+		case (0):
+			if (is_shifting)
+				refill_shift_registers(ppu);
+			addr = 0x2000 | (ppu->v & 0xFFF);
+			ppu->bg_shift.next_nt_byte = ppu_read(ppu, addr);
+			break;
+		case (2):
+			addr = 0x23C0 | (ppu->v & 0x0C00) | ((ppu->v >> 4) & 0x38) | ((ppu->v >> 2) & 0x7);
+			ppu->bg_shift.next_attr_byte = ppu_read(ppu, addr);
+			fix_attr_byte(ppu);
+			break;
+		case (4):
+			addr = ((ppu->registers[PPUCTRL] & PPUCTRL_BG_PTABLE) ? 0x1000 : 0x0000)
+				| (ppu->bg_shift.next_nt_byte << 4)
+				| ((ppu->v >> 12) & 0x07);
+			ppu->bg_shift.next_pt_lo = ppu_read(ppu, addr);
+			break;
+		case (6):
+			addr = ((ppu->registers[PPUCTRL] & PPUCTRL_BG_PTABLE) ? 0x1000 : 0x0000)
+				| (ppu->bg_shift.next_nt_byte << 4)
+				| ((ppu->v >> 12) & 0x07);
+			addr += 8;
+			ppu->bg_shift.next_pt_hi = ppu_read(ppu, addr);
+			break;
+		case (7):
+			ppu_increment_x(ppu);
+			break;
+	}
+}
+
+void	ppu_evaluate_sprites(t_ppu *ppu, uint16_t cycle)
+{
+	if (cycle <= 64)
+	{
+		if (cycle % 2 == 0)
 		{
-			// printf("OAMADDR reset scanline: %d cycle: %d\n", ppu->scanline, ppu->cycle);
-			ppu->oam_addr = 0;
+			uint8_t	byte_idx = (cycle - 1) / 2;
+			uint8_t	sprite_idx = byte_idx / 4;
+			uint8_t	offset = byte_idx % 4;
+
+			switch (offset) {
+				case (0):
+					ppu->secondary_oam[sprite_idx].y = 0xFF;
+					break;
+				case (1):
+					ppu->secondary_oam[sprite_idx].tile_id = 0xFF;
+					break;
+				case (2):
+					ppu->secondary_oam[sprite_idx].attr = 0xFF;
+					break;
+				case (3):
+					ppu->secondary_oam[sprite_idx].x = 0xFF;
+					ppu->secondary_oam[sprite_idx].oam_index = 0xFF;
+					break;
+			}
 		}
 
-		if (ppu->cycle == 320 && ppu->nes->cart->mapper_id == MMC3)
+		if (cycle == 64)
 		{
-			bool bg_a12 = (ppu->registers[PPUCTRL] & 0x10) != 0;
-			size_t cpu_cycle = ppu->total_cycles / 3;
-			mmc3_clock_a12(ppu->nes, bg_a12, cpu_cycle);
+			ppu->oam_ptr = 0;
+			ppu->sec_oam_ptr = 0;
+			ppu->oam_byte_offset = 0;
+			ppu->evalstate = FIND_SPRITES;
 		}
 
-		if (ppu->scanline == 261 && ppu->cycle >= 280 && ppu->cycle <= 304)
+		return;
+	}
+
+	uint8_t		oam_data = ppu->oam[(ppu->oam_ptr << 2) + ppu->oam_byte_offset];
+	uint8_t		sprite_height = ppu->registers[PPUCTRL] & PPUCTRL_SPRITE_SIZE ? 16 : 8;
+	t_sprite	*cur_sprite = &ppu->secondary_oam[ppu->sec_oam_ptr];
+
+	switch (ppu->evalstate) {
+		case (FIND_SPRITES):
+			cur_sprite->y = oam_data;
+			if (ppu->scanline >= oam_data && ppu->scanline < (uint16_t)(oam_data + sprite_height))
+			{
+				cur_sprite->oam_index = ppu->oam_ptr;
+				ppu->oam_byte_offset++;
+				ppu->evalstate = COPY_DATA;
+			}
+			else
+			{
+				ppu->oam_ptr++;
+				if (ppu->oam_ptr == 64)
+				{
+					ppu->oam_ptr = 0;
+					ppu->evalstate = COMPLETE;
+				}
+			}
+			break;
+		case (COPY_DATA):
+			switch (ppu->oam_byte_offset) {
+				case (1): cur_sprite->tile_id = oam_data; break;
+				case (2): cur_sprite->attr = oam_data; break;
+				case (3): cur_sprite->x = oam_data; break;
+			}
+			ppu->oam_byte_offset++;
+
+			if (ppu->oam_byte_offset == 4)
+			{
+				ppu->oam_byte_offset = 0;
+				ppu->sec_oam_ptr++;
+				ppu->oam_ptr++;
+
+				if (ppu->oam_ptr == 64)
+				{
+					ppu->oam_ptr = 0;
+					ppu->evalstate = COMPLETE;
+				}
+				else if (ppu->sec_oam_ptr == 8)
+					ppu->evalstate = OVERFLOW;
+				else
+					ppu->evalstate = FIND_SPRITES;
+			}
+			break;
+		case (OVERFLOW):
+			if (ppu->scanline >= oam_data && ppu->scanline < (uint16_t)(oam_data + sprite_height))
+			{
+				ppu->registers[PPUSTATUS] |= SPRITE_OVERFLOW;
+
+				ppu->oam_byte_offset++;
+				if (ppu->oam_byte_offset == 4)
+				{
+					ppu->oam_byte_offset = 0;
+					ppu->oam_ptr++;
+				}
+			}
+			else
+			{
+				ppu->oam_ptr++;
+				ppu->oam_byte_offset = (ppu->oam_byte_offset + 1) & 0x03; // Sprite overflow bug for accuracy
+			}
+
+			if (ppu->oam_ptr == 64)
+			{
+				ppu->oam_ptr = 0;
+				ppu->evalstate = COMPLETE;
+			}
+			break;
+		case (COMPLETE):
+			break;
+	}
+}
+
+static inline uint8_t flip_byte(uint8_t b)
+{
+    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+
+    return b;
+}
+
+static inline uint16_t	calculate_sprite_addr(t_ppu *ppu, t_sprite *sprite, bool high_byte)
+{
+	uint16_t	addr;
+	uint16_t	tile_idx;
+	uint8_t		row;
+	bool		is_8x16 = (ppu->registers[PPUCTRL] & PPUCTRL_SPRITE_SIZE) != 0;
+	bool		v_flip = (sprite->attr & SPRITE_V_FLIP) != 0;
+
+	if (!is_8x16)
+	{
+		addr = (ppu->registers[PPUCTRL] & PPUCTRL_SPRITE_PTABLE) ? 0x1000 : 0x0000;
+		tile_idx = sprite->tile_id;
+
+		row = (ppu->scanline - sprite->y) & 0x07;
+		if (v_flip)
+			row = 7 - row;
+	}
+	else
+	{
+		addr = (sprite->tile_id & 0x01) ? 0x1000 : 0x0000;
+		tile_idx = sprite->tile_id & 0xFE;
+
+		row = (ppu->scanline - sprite->y) & 0x0F;
+		if (v_flip)
+			row = 15 - row;
+
+		if (row >= 8)
 		{
-			ppu->v = (ppu->v & ~0x7BE0) | (ppu->t & 0x7BE0);
+			tile_idx++;
+			row &= 0x07;
 		}
+	}
+
+	addr = addr | (tile_idx << 4) | row;
+	if (high_byte)
+		addr += 8;
+
+	return addr;
+}
+
+void ppu_fetch_sprites(t_ppu *ppu, uint16_t cycle)
+{
+	uint8_t		sprite_idx = (cycle - 257) / 8;
+	uint8_t		sub_cycle = (cycle - 257) % 8;
+	uint16_t	addr;
+
+	t_sprite *cur_sprite = &ppu->secondary_oam[sprite_idx];
+	switch (sub_cycle) {
+		case (0):
+		case (2):
+			addr = 0x2000 | (ppu->v & 0xFFF);
+			ppu_read(ppu, addr);
+			break;
+		case (4):
+			addr = calculate_sprite_addr(ppu, cur_sprite, false);
+			ppu->sprite_shift.tmp_pattern_lo = ppu_read(ppu, addr);
+			break;
+		case (6):
+			addr = calculate_sprite_addr(ppu, cur_sprite, true);
+			ppu->sprite_shift.tmp_pattern_hi = ppu_read(ppu, addr);
+			break;
+		case (7):
+			if (cur_sprite->attr & SPRITE_H_FLIP)
+			{
+				ppu->sprite_shift.pattern_lo[sprite_idx] = flip_byte(ppu->sprite_shift.tmp_pattern_lo);
+				ppu->sprite_shift.pattern_hi[sprite_idx] = flip_byte(ppu->sprite_shift.tmp_pattern_hi);
+			}
+			else
+			{
+				ppu->sprite_shift.pattern_lo[sprite_idx] = ppu->sprite_shift.tmp_pattern_lo;
+				ppu->sprite_shift.pattern_hi[sprite_idx] = ppu->sprite_shift.tmp_pattern_hi;
+			}
+			ppu->sprite_shift.attr[sprite_idx] = cur_sprite->attr;
+			ppu->sprite_shift.x_counter[sprite_idx] = cur_sprite->x;
+			ppu->sprite_shift.sprite_0[sprite_idx] = (cur_sprite->oam_index == 0);
+			break;
+	}
+}
+
+static inline void ppu_shift_bg(t_ppu *ppu)
+{
+	ppu->bg_shift.pattern_lo <<= 1;
+	ppu->bg_shift.pattern_hi <<= 1;
+	ppu->bg_shift.attr_lo <<= 1;
+	ppu->bg_shift.attr_hi <<= 1;
+}
+
+static inline void ppu_shift_sprites(t_ppu *ppu)
+{
+	for (int i = 0; i < 8; i++)
+	{
+		if (ppu->sprite_shift.x_counter[i] > 0)
+			ppu->sprite_shift.x_counter[i]--;
+		else
+		{
+			ppu->sprite_shift.pattern_lo[i] <<= 1;
+			ppu->sprite_shift.pattern_hi[i] <<= 1;
+		}
+	}
+}
+
+void	ppu_render_cycle(t_ppu *ppu)
+{
+	uint16_t	cycle = ppu->cycle;
+	bool		shifting_bg = (cycle >= 2 && cycle <= 257) || (cycle >= 322 && cycle <= 337);
+	bool		fetching_bg = (cycle <= 256) || (cycle >= 321 && cycle <= 340);
+	bool		fetching_sprites = (cycle >= 257 && cycle <= 320);
+	bool		hblank = cycle > 256;
+
+	if (shifting_bg)
+		ppu_shift_bg(ppu);
+
+	if (!hblank)
+	{
+		ppu_output_pixel(ppu);
+		ppu_evaluate_sprites(ppu, cycle);
+		ppu_shift_sprites(ppu);
+	}
+
+	if (fetching_bg)
+		ppu_fetch_bg(ppu, cycle, shifting_bg);
+	else if (fetching_sprites)
+		ppu_fetch_sprites(ppu, cycle);
+
+	if (cycle == 256)
+		ppu_increment_y(ppu);
+	else if (cycle == 257)
+		ppu->v = (ppu->v & ~0x41F) | (ppu->t & 0x41F);
+	else if (ppu->scanline == 261 && cycle >= 280 && cycle <= 304)
+		ppu->v = (ppu->v & ~0x7BE0) | (ppu->t & 0x7BE0);
+}
+
+void ppu_tick(t_ppu *ppu)
+{
+	bool	is_rendering = ppu->registers[PPUMASK] & (PPUMASK_BG | PPUMASK_SP);
+
+	if ((ppu->scanline < 240 || ppu->scanline == 261) && is_rendering && ppu->cycle > 0)
+	{
+		// ppu_render_cycle_batched(ppu);
+		ppu_render_cycle(ppu);
 	}
 
 	if (ppu->scanline == 241 && ppu->cycle == 1)
@@ -600,7 +1006,7 @@ void ppu_tick(t_ppu *ppu)
 		ppu->registers[PPUSTATUS] &= ~SPRITE_OVERFLOW;
 	}
 
-	bool nmi_active = (ppu->registers[PPUCTRL] & VBLANK_ENABLE) && (ppu->registers[PPUSTATUS] & VBLANK_ACTIVE);
+	bool nmi_active = (ppu->registers[PPUCTRL] & PPUCTRL_VBLANK_ENABLE) && (ppu->registers[PPUSTATUS] & VBLANK_ACTIVE);
 
 	if (nmi_active && !ppu->nmi_state_prev)
 	{
