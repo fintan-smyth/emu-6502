@@ -11,8 +11,8 @@ void	init_nes(t_nes *nes)
 	nes->cpu.parent_device = nes;
 	nes->ppu.nes = nes;
 	nes->ppu.nmi_pin = &nes->cpu.nmi_pending;
-	nes->settings.fps = 60;
-	nes->apu.fps_scale = 1;
+	nes->apu.fps_scale = 1.0;
+	nes->apu.drc_scale = 1.0;
 	nes->apu.noise.shift = 1;
 	nes->apu.square[0].sweep.up_fix = 1;
 }
@@ -33,7 +33,7 @@ void	nes_step_alt(t_nes *nes)
 
 	cpu_tick(&nes->cpu);
 	ppu_tick_for(&nes->ppu, 3);
-	apu_tick_for(&nes->apu, 1);
+	apu_tick(&nes->apu);
 }
 
 uint8_t	cpu_ppu_reg_read(struct pt_entry *entry, void *arg, uint16_t addr)

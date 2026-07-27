@@ -1,5 +1,7 @@
+#include "audio_stream.h"
 #include "emu6502.h"
 #include "nes.h"
+#include "emulator.h"
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -67,7 +69,7 @@ void	tick_noise_timer(struct noise_channel *noise)
 	}
 }
 
-void	apu_tick(t_apu *apu)
+void	apu_tick_timers(t_apu *apu)
 {
 	static bool odd_cycle = false;
 
@@ -301,7 +303,7 @@ float filter_audio_mix(float audio_mix)
 	return lpf_out;
 }
 
-uint16_t	generate_audio_sample(t_apu *apu)
+float	generate_audio_sample(t_apu *apu)
 {
 
 	uint8_t sq_out = square_get_output_volume(&apu->square[0]) + square_get_output_volume(&apu->square[1]);
@@ -310,23 +312,22 @@ uint16_t	generate_audio_sample(t_apu *apu)
 
 	// float audio_mix = (sq_out + tri_out + noise_out) / 80.0;
 	float audio_mix = mix_channels(sq_out, tri_out, noise_out, 0);
-	float filtered = filter_audio_mix(audio_mix);
-
-	return (int16_t)(filtered * 24000.0f);
-	// return (sq_out + noise_out + tri_out) * 300;
+	// float filtered = filter_audio_mix(audio_mix);
+	//
+	// return (int16_t)(filtered * 24000.0f);
+	return audio_mix;
 }
 
-void apu_tick_for(t_apu *apu, uint32_t cpu_cycles)
+void apu_tick(t_apu *apu)
 {
 	static double	audio_timer = 0.0;
-	static int16_t	sample_buffer[1024] = {};
-	static uint16_t	buffer_idx = 0;
 
-	audio_timer += cpu_cycles;
-	apu->frame_count.cpu_cycles += cpu_cycles;
+	apu->sample_sum += generate_audio_sample(apu);
+	apu->sample_count++;
+	audio_timer += 1.0;
+	apu->frame_count.cpu_cycles++;
 
-	while (cpu_cycles--)
-		apu_tick(apu);
+	apu_tick_timers(apu);
 
 	if (apu->frame_count.cpu_cycles >= 7457)
 	{
@@ -334,20 +335,21 @@ void apu_tick_for(t_apu *apu, uint32_t cpu_cycles)
 		tick_frame_counter(apu);
 	}
 
-	while (audio_timer >= (40.58 * apu->fps_scale))
+	double cycles_per_sample = 40.58 * apu->drc_scale * apu->fps_scale;
+
+	while (audio_timer >= cycles_per_sample)
 	{
-		audio_timer -= (40.58 * apu->fps_scale);
+		audio_timer -= cycles_per_sample;
 
-		uint16_t output = generate_audio_sample(apu);
+		// uint16_t output = generate_audio_sample(apu);
+		float		avg_mix = apu->sample_sum / (float)apu->sample_count;
+		float		filtered = filter_audio_mix(avg_mix);
+		int16_t		final_sample = (int16_t)(filtered * 32000.0f * ((float)g_settings.volume / 100.0));
 
-		sample_buffer[buffer_idx++] = output;
-		if (buffer_idx == 1024)
-		{
-			while (!IsAudioStreamProcessed(apu->stream))
-				;
-			UpdateAudioStream(apu->stream, sample_buffer, 1024);
-			buffer_idx = 0;
-		}
+		ring_buffer_push(&g_audio_buffer, final_sample);
+
+		apu->sample_sum = 0;
+		apu->sample_count = 0;
 	}
 }
 

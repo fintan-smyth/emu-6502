@@ -13,6 +13,7 @@ DBG_FLAGS =		-g3 \
 				# -pg \
 
 SRC =	$(SRC_DIR)/main.c \
+		$(SRC_DIR)/emulator.c \
 		$(SRC_DIR)/6502/cpu.c \
 		$(SRC_DIR)/6502/instructions.c \
 		$(SRC_DIR)/6502/display.c \
@@ -24,6 +25,8 @@ SRC =	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/nes/render.c \
 		$(SRC_DIR)/nes/input.c \
 		$(SRC_DIR)/nes/saves.c \
+		$(SRC_DIR)/nes/audio_stream.c \
+		$(SRC_DIR)/nes/menu.c \
 		$(SRC_DIR)/6502/instructions_alt.c \
 		# $(SRC_DIR)/6502/dump.c \
 

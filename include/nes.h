@@ -18,7 +18,6 @@
 
 #define SAMPLE_RATE 44100
 #define SAMPLE_SIZE 16
-#define AUDIO_BUFFER_SIZE 1024
 #define CHANNELS 1
 
 #define JOY_A		0x01
@@ -192,6 +191,7 @@ typedef struct s_ppu
 	uint8_t			readbuf;
 	bool			*nmi_pin;
 	bool			nmi_state_prev;
+	uint16_t		addrbus;
 	uint8_t			vram[0x800];
 	uint8_t			oam[0x100];
 	uint8_t			oam_addr;
@@ -202,8 +202,7 @@ typedef struct s_ppu
 	SpriteEvalState	evalstate;
 	uint8_t			secondary_count;
 	uint8_t			palette[0x20];
-	uint32_t		*screenbuf;
-	Texture2D		screen_tex;
+	uint32_t		screenbuf[CANVAS_HEIGHT * CANVAS_WIDTH];
 	size_t			total_cycles;
 	uint8_t			io_latch;
 	struct {
@@ -217,7 +216,6 @@ typedef struct s_ppu
 		uint8_t		next_pt_hi;
 	}	bg_shift;
 	struct {
-		uint8_t	n_sprites;
 		uint8_t	pattern_lo[8];
 		uint8_t	pattern_hi[8];
 		uint8_t	attr[8];
@@ -263,8 +261,7 @@ union mapper
 		uint8_t	irq_counter;
 		bool	irq_reload;
 		bool	irq_enabled;
-		size_t	a12_low_cycle;
-		bool	a12_state;
+		size_t	a12_low_cycles;
 	}	mmc3;
 	struct
 	{
@@ -334,7 +331,6 @@ struct triangle_channel
 
 typedef struct s_apu
 {
-	AudioStream	stream;
 	uint8_t		status;
 	struct
 	{
@@ -347,7 +343,10 @@ typedef struct s_apu
 	struct square_channel	square[2];
 	struct triangle_channel	triangle;
 	struct noise_channel	noise;
-	float		fps_scale;
+	float		sample_sum;
+	uint32_t	sample_count;
+	double		fps_scale;
+	double		drc_scale;
 }	t_apu;
 
 struct s_nes
@@ -362,11 +361,8 @@ struct s_nes
 	uint8_t	ram[0x800];
 	// uint8_t	dump[0x400];
 	union mapper	mapper;
-	struct {
-		uint8_t	pattern_palette;
-		int32_t	fps;
-	} settings;
 	bool	mapper_irq;
+	bool	frame_ready;
 	size_t	frames;
 };
 
@@ -390,30 +386,24 @@ void		catchup_with_cpu(t_nes *nes);
 uint8_t		nes_step(t_nes *nes);
 void		nes_step_alt(t_nes *nes);
 
-void	init_raylib(t_nes *nes);
 void	draw_palette(void);
 void	fetch_tile_row(t_ppu *ppu, uint8_t *buf, uint8_t table, uint8_t tile_id, uint8_t row);
 void	draw_pixel(t_ppu *ppu, int x, int y, uint32_t col);
 void	test_tile_fetch(void);
 void	draw_tile(t_ppu *ppu, uint8_t table, uint8_t tile_id, int x, int y);
 void	draw_pattern_table(t_ppu *ppu, uint8_t table, int posX, int posY);
-void	update_frame(t_nes *nes);
-
-void	save_game(t_nes *nes);
-void	load_save_game(t_nes *nes);
-void	handle_player_input(t_nes *nes);
 
 // Mappers
 
 void	uxrom_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val);
-void	mmc3_clock_a12(t_nes *nes, bool a12_high, size_t cpu_cycle);
+void	mmc3_clock_a12(t_nes *nes);
 void	init_mapper_mmap(t_nes *nes, t_cart *cart);
 void	refresh_mapper_mmap(t_nes *nes, t_cart *cart);
 
 
 void	handle_apu_writes(t_apu *apu, IOReg reg, uint8_t val);
+void	apu_tick_timers(t_apu *apu);
 void	apu_tick(t_apu *apu);
-void	apu_tick_for(t_apu *apu, uint32_t n_ticks);
 
 void	dump_ppu_memory(t_ppu *ppu);
 

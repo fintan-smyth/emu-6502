@@ -1,9 +1,9 @@
-#include "emu6502.h"
-#include "nes.h"
+#include "emulator.h"
 #include <raylib.h>
 
-void	handle_player_input(t_nes *nes)
+void	handle_player_input(t_emulator *emu)
 {
+	t_nes *nes = &emu->nes;
 	nes->joy_state[0] = 0;
 	nes->joy_state[1] = 0;
 
@@ -26,13 +26,13 @@ void	handle_player_input(t_nes *nes)
 
 	if (IsKeyPressed(KEY_LEFT_SHIFT))
 	{
-		nes->apu.fps_scale = 2;
-		SetTargetFPS(nes->settings.fps * 2);
+		// nes->apu.fps_scale = 2;
+		g_settings.target_fps = 120;
 	}
 	if (IsKeyReleased(KEY_LEFT_SHIFT))
 	{
-		nes->apu.fps_scale = 1;
-		SetTargetFPS(nes->settings.fps);
+		// nes->apu.fps_scale = 1;
+		g_settings.target_fps = 60;
 	}
 
 	if (IsKeyPressed(KEY_R))
@@ -44,33 +44,38 @@ void	handle_player_input(t_nes *nes)
 	}
 	if (IsKeyPressed(KEY_P))
 	{
-		nes->settings.pattern_palette = (nes->settings.pattern_palette + 1) % 4;
+		getchar();
+	}
+	if (IsKeyPressed(KEY_V))
+	{
+		TakeScreenshot("screenshot.png");
 	}
 	if (IsKeyPressed(KEY_LEFT_BRACKET))
 	{
-		nes->settings.fps -= 10;
-		if (nes->settings.fps < 0)
-			nes->settings.fps = 0;
-		nes->apu.fps_scale = nes->settings.fps / 60.0;
-		SetTargetFPS(nes->settings.fps);
+		g_settings.target_fps -= 10;
+		if (g_settings.target_fps < 0)
+			g_settings.target_fps = 0;
 	}
 	if (IsKeyPressed(KEY_RIGHT_BRACKET))
 	{
-		nes->settings.fps += 10;
-		if (nes->settings.fps > 240)
-			nes->settings.fps = 240;
-		nes->apu.fps_scale = nes->settings.fps / 60.0;
-		SetTargetFPS(nes->settings.fps);
+		g_settings.target_fps += 10;
 	}
 
 	if (IsKeyPressed(KEY_X))
-		save_game(nes);
+		save_game(emu);
 	if (IsKeyPressed(KEY_Z))
-		load_save_game(nes);
+		load_save_game(emu);
 	if (IsKeyPressed(KEY_B))
 	{
 		printf("mirroring: %d\n", nes->ppu.mirroring);
 		dump_ppu_memory(&nes->ppu);
 		exit(0);
 	}
+	if (IsKeyPressed(KEY_ESCAPE))
+	{
+		emu->state = MENU;
+		emu->menustate.menutype = PAUSE;
+		emu->menustate.selected_idx = 0;
+	}
+	nes->apu.fps_scale = g_settings.target_fps / 60.0;
 }

@@ -1,11 +1,14 @@
+#include "audio_stream.h"
 #include "emu6502.h"
 #include "nes.h"
 #include <raylib.h>
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 const uint32_t palette[] = {
 	[0x00] = 0x626262FF,
@@ -278,6 +281,9 @@ uint8_t	ppu_read(t_ppu *ppu, uint16_t addr)
 	uint8_t	pageno = addr >> 10;
 	struct pt_entry *entry = &ppu->pagetable[pageno];
 
+	if (addr < 0x3F00)
+		ppu->addrbus = addr;
+
 	if (entry->read_handler)
 		return entry->read_handler(entry, ppu, addr);
 
@@ -288,6 +294,9 @@ void	ppu_write(t_ppu *ppu, uint16_t addr, uint8_t val)
 {
 	uint8_t	pageno = addr >> 10;
 	struct pt_entry *entry = &ppu->pagetable[pageno];
+
+	if (addr < 0x3F00)
+		ppu->addrbus = addr;
 
 	if (entry->write_handler)
 		entry->write_handler(entry, ppu, addr, val);
@@ -556,12 +565,12 @@ void	ppu_render_cycle_batched(t_ppu *ppu)
 		ppu->v = (ppu->v & ~0x41F) | (ppu->t & 0x41F);
 		find_scanline_sprites(ppu);
 
-		if (ppu->nes->cart->mapper_id == MMC3)
-		{
-			bool sprite_a12 = (ppu->registers[PPUCTRL] & 0x08) != 0;
-			size_t cpu_cycle = ppu->total_cycles / 3;
-			mmc3_clock_a12(ppu->nes, sprite_a12, cpu_cycle);
-		}
+		// if (ppu->nes->cart->mapper_id == MMC3)
+		// {
+		// 	bool sprite_a12 = (ppu->registers[PPUCTRL] & 0x08) != 0;
+		// 	size_t cpu_cycle = ppu->total_cycles / 3;
+		// 	mmc3_clock_a12(ppu->nes, sprite_a12, cpu_cycle);
+		// }
 	}
 	if (ppu->cycle >= 265 && ppu->cycle <= 320)
 	{
@@ -569,12 +578,12 @@ void	ppu_render_cycle_batched(t_ppu *ppu)
 		ppu->oam_addr = 0;
 	}
 
-	if (ppu->cycle == 320 && ppu->nes->cart->mapper_id == MMC3)
-	{
-		bool bg_a12 = (ppu->registers[PPUCTRL] & 0x10) != 0;
-		size_t cpu_cycle = ppu->total_cycles / 3;
-		mmc3_clock_a12(ppu->nes, bg_a12, cpu_cycle);
-	}
+	// if (ppu->cycle == 320 && ppu->nes->cart->mapper_id == MMC3)
+	// {
+	// 	bool bg_a12 = (ppu->registers[PPUCTRL] & 0x10) != 0;
+	// 	size_t cpu_cycle = ppu->total_cycles / 3;
+	// 	mmc3_clock_a12(ppu->nes, bg_a12, cpu_cycle);
+	// }
 
 	if (ppu->scanline == 261 && ppu->cycle >= 280 && ppu->cycle <= 304)
 	{
@@ -685,7 +694,7 @@ void ppu_output_pixel(t_ppu *ppu)
 		col_index &= 0x30;
 
 	Color col = palette_alt[col_index & 0x3F];
-	// if (pixel_y < 240)
+	if (pixel_y < 240)
 		draw_pixel(ppu, pixel_x, pixel_y, *(uint32_t *)&col);
 }
 
@@ -765,12 +774,13 @@ void	ppu_evaluate_sprites(t_ppu *ppu, uint16_t cycle)
 
 	uint8_t		oam_data = ppu->oam[(ppu->oam_ptr << 2) + ppu->oam_byte_offset];
 	uint8_t		sprite_height = ppu->registers[PPUCTRL] & PPUCTRL_SPRITE_SIZE ? 16 : 8;
-	t_sprite	*cur_sprite = &ppu->secondary_oam[ppu->sec_oam_ptr];
+	t_sprite	*cur_sprite;
 
 	switch (ppu->evalstate) {
 		case (FIND_SPRITES):
+			cur_sprite = &ppu->secondary_oam[ppu->sec_oam_ptr];
 			cur_sprite->y = oam_data;
-			if (ppu->scanline >= oam_data && ppu->scanline < (uint16_t)(oam_data + sprite_height))
+			if (ppu->scanline >= oam_data && ppu->scanline < (uint8_t)(oam_data + sprite_height))
 			{
 				cur_sprite->oam_index = ppu->oam_ptr;
 				ppu->oam_byte_offset++;
@@ -787,6 +797,7 @@ void	ppu_evaluate_sprites(t_ppu *ppu, uint16_t cycle)
 			}
 			break;
 		case (COPY_DATA):
+			cur_sprite = &ppu->secondary_oam[ppu->sec_oam_ptr];
 			switch (ppu->oam_byte_offset) {
 				case (1): cur_sprite->tile_id = oam_data; break;
 				case (2): cur_sprite->attr = oam_data; break;
@@ -911,7 +922,12 @@ void ppu_fetch_sprites(t_ppu *ppu, uint16_t cycle)
 			ppu->sprite_shift.tmp_pattern_hi = ppu_read(ppu, addr);
 			break;
 		case (7):
-			if (cur_sprite->attr & SPRITE_H_FLIP)
+			if (cur_sprite->oam_index > 64)
+			{
+				ppu->sprite_shift.pattern_lo[sprite_idx] = 0;
+				ppu->sprite_shift.pattern_hi[sprite_idx] = 0;
+			}
+			else if (cur_sprite->attr & SPRITE_H_FLIP)
 			{
 				ppu->sprite_shift.pattern_lo[sprite_idx] = flip_byte(ppu->sprite_shift.tmp_pattern_lo);
 				ppu->sprite_shift.pattern_hi[sprite_idx] = flip_byte(ppu->sprite_shift.tmp_pattern_hi);
@@ -981,10 +997,39 @@ void	ppu_render_cycle(t_ppu *ppu)
 		ppu->v = (ppu->v & ~0x7BE0) | (ppu->t & 0x7BE0);
 }
 
+static inline void ppu_handle_mapper_behaviour(t_ppu *ppu)
+{
+	t_nes *nes = ppu->nes;
+
+	switch (nes->cart->mapper_id) {
+		case (MMC3):
+			if (ppu->addrbus & 0x1000)
+			{
+				if (nes->mapper.mmc3.a12_low_cycles >= 9)
+				{
+					mmc3_clock_a12(nes);
+				}
+				nes->mapper.mmc3.a12_low_cycles = 0;
+			}
+			else
+			{
+				nes->mapper.mmc3.a12_low_cycles++;
+			}
+			break;
+		default:
+			break;
+	}
+}
+
 void ppu_tick(t_ppu *ppu)
 {
 	bool	is_rendering = ppu->registers[PPUMASK] & (PPUMASK_BG | PPUMASK_SP);
 
+	// if (ppu->scanline == 0 && ppu->cycle == 0)
+	// {
+	// 	memset(ppu->sprite_shift.pattern_lo, 0, 8);
+	// 	memset(ppu->sprite_shift.pattern_hi, 0, 8);
+	// }
 	if ((ppu->scanline < 240 || ppu->scanline == 261) && is_rendering && ppu->cycle > 0)
 	{
 		// ppu_render_cycle_batched(ppu);
@@ -996,7 +1041,8 @@ void ppu_tick(t_ppu *ppu)
 		ppu->registers[PPUSTATUS] |= VBLANK_ACTIVE;
 		// if (ppu->registers[PPUCTRL] & VBLANK_ENABLE)
 		// 	*ppu->nmi_pin = true;
-		update_frame(ppu->nes);
+
+		ppu->nes->frame_ready = true;
 	}
 
 	if (ppu->scanline == 261 && ppu->cycle == 1)
@@ -1006,7 +1052,8 @@ void ppu_tick(t_ppu *ppu)
 		ppu->registers[PPUSTATUS] &= ~SPRITE_OVERFLOW;
 	}
 
-	bool nmi_active = (ppu->registers[PPUCTRL] & PPUCTRL_VBLANK_ENABLE) && (ppu->registers[PPUSTATUS] & VBLANK_ACTIVE);
+	bool nmi_active = (ppu->registers[PPUCTRL] & PPUCTRL_VBLANK_ENABLE)
+						&& (ppu->registers[PPUSTATUS] & VBLANK_ACTIVE);
 
 	if (nmi_active && !ppu->nmi_state_prev)
 	{
@@ -1016,6 +1063,7 @@ void ppu_tick(t_ppu *ppu)
 
 	ppu->nmi_state_prev = nmi_active;
 
+	ppu_handle_mapper_behaviour(ppu);
 	ppu->cycle++;
 	if (ppu->cycle == 341)
 	{

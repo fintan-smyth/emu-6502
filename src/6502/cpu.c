@@ -9,7 +9,6 @@ void	map_memory(struct pt_entry *pagetable, uint16_t addr, uint8_t pages,
 				uint8_t *memory, void *read_handler, void *write_handler)
 {
 	uint8_t pageno = addr >> 10;
-	// memset(&pagetable[pageno], 0, sizeof(struct pt_entry) * pages);
 	for (uint8_t i = 0; i < pages; i++)
 	{
 		struct pt_entry *entry = &pagetable[pageno + i];

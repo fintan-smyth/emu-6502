@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 
 void	uxrom_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val)
 {
@@ -112,62 +113,26 @@ void	mmc1_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_
 	(void)entry;
 }
 
-void	mmc3_clock_a12(t_nes *nes, bool a12_high, size_t cpu_cycle)
+void	mmc3_clock_a12(t_nes *nes)
 {
-	if (!a12_high)
+	bool	clock_irq = false;
+
+	if (nes->mapper.mmc3.irq_counter == 0 || nes->mapper.mmc3.irq_reload)
 	{
-		if (nes->mapper.mmc3.a12_state == true)
-		{
-			nes->mapper.mmc3.a12_low_cycle = cpu_cycle;
-			nes->mapper.mmc3.a12_state = false;
-		}
+		nes->mapper.mmc3.irq_counter = nes->mapper.mmc3.irq_latch;
+		nes->mapper.mmc3.irq_reload = false;
 	}
-	else if (nes->mapper.mmc3.a12_state == false)
+	else
 	{
-		nes->mapper.mmc3.a12_state = true;
-		if (cpu_cycle - nes->mapper.mmc3.a12_low_cycle >= 3)
-		{
-			// printf("VALID CLOCK! Counter before: %d, Latch: %d\n", nes->mapper.mmc3.irq_counter, nes->mapper.mmc3.irq_latch);
-			if (nes->mapper.mmc3.irq_counter == 0 || nes->mapper.mmc3.irq_reload)
-			{
-				nes->mapper.mmc3.irq_counter = nes->mapper.mmc3.irq_latch;
-				nes->mapper.mmc3.irq_reload = false;
-			}
-			else
-				nes->mapper.mmc3.irq_counter--;
-
-			if (nes->mapper.mmc3.irq_counter == 0 && nes->mapper.mmc3.irq_enabled)
-			{
-				// printf("\e[33;1m### Mapper IRQ going high! ###\e[m\n");
-				nes->mapper_irq= true;
-			}
-		}
-	}
-}
-
-uint8_t	mmc3_ppu_read_handler(struct pt_entry *entry, void *arg, uint16_t addr)
-{
-	t_ppu *ppu = arg;
-	t_nes *nes = ppu->nes;
-	// printf("addr: 0x%04X ", addr);
-	// fflush(stdout);
-	uint8_t val = entry->memory[addr & 0x3FF];
-	// printf(" val: 0x%02X\n", val);
-
-	bool a12_high = (addr & 0x1000) != 0;
-
-	// if (ppu->cycle > 264)
-	{
-		// printf("\e[36;1mADDR\e[m: 0x%04X ", addr);
-		// printf("\e[31;1mCYCLE\e[m: %3d ", ppu->cycle);
-		// printf("\e[32;1mSCANLINE\e[m: %3d ", ppu->scanline);
-		// printf("\e[34;1mA12\e[m: %s\n", a12_high ? "\e[32;1mHIGH\e[m" : "\e[35;1mLOW\e[m");
+		nes->mapper.mmc3.irq_counter--;
+		if (nes->mapper.mmc3.irq_counter == 0)
+			clock_irq = true;
 	}
 
-	size_t effective_cycles = ppu->total_cycles / 3;
-	mmc3_clock_a12(nes, a12_high, effective_cycles);
-
-	return val;
+	if (clock_irq && nes->mapper.mmc3.irq_enabled)
+	{
+		nes->mapper_irq = true;
+	}
 }
 
 void	mmc3_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_t val);
@@ -191,27 +156,27 @@ void	mmc3_update_mappings(t_nes *nes, t_cart *cart)
 		map_memory(nes->cpu.pagetable, 0xE000, 8, &cart->prg_rom[(0x4000 * cart->prg_rom_banks) - 0x2000], NULL, mmc3_write_handler);
 	}
 
-	map_ppu_nametables(&nes->ppu, mmc3_ppu_read_handler, nes->ppu.mirroring);
+	map_ppu_nametables(&nes->ppu, NULL, nes->ppu.mirroring);
 
 	void	(*write_handler)(struct pt_entry *, void *, uint16_t, uint8_t) = cart->chr_ram_banks > 0 ? passthrough_write : NULL;
 	uint8_t	*memory = cart->chr_ram_banks > 0 ? cart->chr_ram : cart->chr_rom;
 	if (mapper->mmc3.chr_mode == 0)
 	{
-		map_memory(nes->ppu.pagetable, 0x0000, 2, &memory[0x400 * (mapper->mmc3.registers[0] & ~0x01)], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x0800, 2, &memory[0x400 * (mapper->mmc3.registers[1] & ~0x01)], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x1000, 1, &memory[0x400 * mapper->mmc3.registers[2]], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x1400, 1, &memory[0x400 * mapper->mmc3.registers[3]], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x1800, 1, &memory[0x400 * mapper->mmc3.registers[4]], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x1C00, 1, &memory[0x400 * mapper->mmc3.registers[5]], mmc3_ppu_read_handler, write_handler);
+		map_memory(nes->ppu.pagetable, 0x0000, 2, &memory[0x400 * (mapper->mmc3.registers[0] & ~0x01)], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x0800, 2, &memory[0x400 * (mapper->mmc3.registers[1] & ~0x01)], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x1000, 1, &memory[0x400 * mapper->mmc3.registers[2]], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x1400, 1, &memory[0x400 * mapper->mmc3.registers[3]], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x1800, 1, &memory[0x400 * mapper->mmc3.registers[4]], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x1C00, 1, &memory[0x400 * mapper->mmc3.registers[5]], NULL, write_handler);
 	}
 	else
 	{
-		map_memory(nes->ppu.pagetable, 0x0000, 1, &memory[0x400 * mapper->mmc3.registers[2]], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x0400, 1, &memory[0x400 * mapper->mmc3.registers[3]], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x0800, 1, &memory[0x400 * mapper->mmc3.registers[4]], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x0C00, 1, &memory[0x400 * mapper->mmc3.registers[5]], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x1000, 2, &memory[0x400 * (mapper->mmc3.registers[0] & ~0x01)], mmc3_ppu_read_handler, write_handler);
-		map_memory(nes->ppu.pagetable, 0x1800, 2, &memory[0x400 * (mapper->mmc3.registers[1] & ~0x01)], mmc3_ppu_read_handler, write_handler);
+		map_memory(nes->ppu.pagetable, 0x0000, 1, &memory[0x400 * mapper->mmc3.registers[2]], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x0400, 1, &memory[0x400 * mapper->mmc3.registers[3]], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x0800, 1, &memory[0x400 * mapper->mmc3.registers[4]], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x0C00, 1, &memory[0x400 * mapper->mmc3.registers[5]], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x1000, 2, &memory[0x400 * (mapper->mmc3.registers[0] & ~0x01)], NULL, write_handler);
+		map_memory(nes->ppu.pagetable, 0x1800, 2, &memory[0x400 * (mapper->mmc3.registers[1] & ~0x01)], NULL, write_handler);
 	}
 }
 
@@ -245,7 +210,7 @@ void	mmc3_write_handler(struct pt_entry *entry, void *arg, uint16_t addr, uint8_
 			{
 				printf("Setting mirroring...\n");
 				nes->ppu.mirroring = (val & 1) ? MIRROR_HORIZONTAL : MIRROR_VERTICAL;
-				map_ppu_nametables(&nes->ppu, mmc3_ppu_read_handler, nes->ppu.mirroring);
+				map_ppu_nametables(&nes->ppu, NULL, nes->ppu.mirroring);
 			}
 			else
 			{
@@ -284,7 +249,7 @@ void	init_mapper_mmap(t_nes *nes, t_cart *cart)
 			nes->mapper.mmc1.registers[MMC1_CTRL] = 0x0C;
 			break;
 		case (MMC3):
-			nes->mapper.mmc3.a12_low_cycle = 0;
+			nes->mapper.mmc3.a12_low_cycles = 0;
 			break;
 		default:
 			break;

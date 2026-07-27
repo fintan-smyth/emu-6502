@@ -1,4 +1,6 @@
 #include "emu6502.h"
+#include "emulator.h"
+#include "menu.h"
 #include "nes.h"
 #include <ctype.h>
 #include <raylib.h>
@@ -256,43 +258,54 @@ void	debug_loop(t_nes *nes)
 
 int	main(int argc, char **argv)
 {
-	t_nes nes = {};
-	nes.cpu.logfd = open("output.log", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
+	t_emulator emu = {};
+	emu.nes.cpu.logfd = open("output.log", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
 
-	nes.cpu.sp = 0xFF;
+	emu.nes.cpu.sp = 0xFF;
 
 	if (argc > 2)
 		return 1;
 
-	init_nes(&nes);
-	init_raylib(&nes);
+	init_nes(&emu.nes);
+	init_emulator(&emu);
 
 	t_cart *cart = read_nes_cart(argv[1]);
 	if (cart == NULL)
 		return (printf("Error loading cartridge\n"), 1);
-	nes_load_cartridge(&nes, cart);
+	nes_load_cartridge(&emu.nes, cart);
 
 	set_term_settings();
 	// bstset_word_insert(&breakpoints, 0x3373);
 	
-	nes.cpu.pending_interrupt = INT_RESET;
+	emu.nes.cpu.pending_interrupt = INT_RESET;
 	// nes.cpu.status = FLAG_E | FLAG_I; // TODO: Change back when interrupts are handled
 	// nes.cpu.sp = 0xFD;
 	// nes.cpu.cycles = 7;
 	// nes.cpu.pc = 0xC000;
 	// exec_hardware_interrupt(&nes.cpu, 0xFFFC);
-	while (!WindowShouldClose())
-		nes_step_alt(&nes);
-		// nes_step(&nes);
+	while (!WindowShouldClose() && emu.state != EXIT)
+	{
+		switch (emu.state) {
+			case(GAMEPLAY):
+				run_emulator_frame(&emu);
+				break;
+			case (MENU):
+				handle_menu_input(&emu);
+				draw_menu(&emu);
+				break;
+			default:
+				break;
+		}
+	}
 	// debug_loop(&nes);
 
-	free_cart(nes.cart);
-	free(nes.ppu.screenbuf);
+	free_cart(emu.nes.cart);
 	reset_term_settings();
-	close(nes.cpu.logfd);
-	UnloadTexture(nes.ppu.screen_tex);
-	StopAudioStream(nes.apu.stream);
-	UnloadAudioStream(nes.apu.stream);
+	close(emu.nes.cpu.logfd);
+	clear_msg_queue(&emu.msg_queue);
+	UnloadTexture(emu.screen_tex);
+	StopAudioStream(emu.stream);
+	UnloadAudioStream(emu.stream);
 	CloseAudioDevice();
 	CloseWindow();
 }
