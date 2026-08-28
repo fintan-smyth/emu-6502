@@ -3,8 +3,9 @@ CC = gcc
 SRC_DIR := ./src
 BUILD_DIR:= ./build
 INC_DIR:= ./include
+DATA_DIR:= $(HOME)/.local/share/emu6502
 
-CFLAGS = -Wall -Wextra -I $(INC_DIR) -O0
+CFLAGS = -Wall -Wextra -I $(INC_DIR) -D DATA_DIR=$(DATA_DIR) -O2
 
 LINK_FLAGS = -lraylib
 
@@ -36,7 +37,7 @@ NAME = emu6502
 
 all: $(NAME)
 
-$(NAME): $(BUILD_DIR) $(OBJ)
+$(NAME): $(BUILD_DIR) $(DATA_DIR) $(OBJ)
 	$(CC) $(CFLAGS) $(DBG_FLAGS) $(LINK_FLAGS) $(OBJ) -o $(NAME)
 
 $(OBJ): $(BUILD_DIR)%.o: $(SRC_DIR)%.c
@@ -45,6 +46,9 @@ $(OBJ): $(BUILD_DIR)%.o: $(SRC_DIR)%.c
 $(BUILD_DIR):
 	@mkdir -p $@/6502
 	@mkdir -p $@/nes
+
+$(DATA_DIR):
+	@mkdir -p $@
 
 clean:
 	rm -rf build/

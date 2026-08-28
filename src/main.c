@@ -16,9 +16,6 @@
 #include <unistd.h>
 #include <termios.h>
 
-FS_DECLARE_BSTSET(uint16_t, word, NULL);
-
-
 sig_atomic_t g_var = {0x00};
 
 void sig_handler(int signo) {
@@ -146,108 +143,108 @@ uint16_t read_word_input(char *prompt)
 // 	g_var = 0;
 // }
 
-static inline void	tick_until_breakpoint(t_nes *nes, BSTSet_word *breakpoints)
-{
-	uint16_t cur_pc = 0x0000;
-	uint16_t old_pc = 0xFFFF;
-	g_var = 0;
-	// while (cur_pc != old_pc && g_var != SIGINT && !WindowShouldClose())
-	while (g_var != SIGINT && !WindowShouldClose())
-	{
-		if (nes->cpu.debug_int)
-		{
-			nes->cpu.debug_int = false;
-			break;
-		}
-		if (nes->cpu.instr_step == 0)
-		{
-			old_pc = cur_pc;
-			cur_pc = nes->cpu.pc;
-			if (bstset_word_contains(breakpoints, nes->cpu.pc))
-				break ;
-		}
-		// cpu_tick(&nes->cpu);
-		nes_step_alt(nes);
-	}
-	g_var = 0;
-	print_debug_view(&nes->cpu, old_pc);
-}
+// static inline void	tick_until_breakpoint(t_nes *nes, BSTSet_word *breakpoints)
+// {
+// 	uint16_t cur_pc = 0x0000;
+// 	uint16_t old_pc = 0xFFFF;
+// 	g_var = 0;
+// 	// while (cur_pc != old_pc && g_var != SIGINT && !WindowShouldClose())
+// 	while (g_var != SIGINT && !WindowShouldClose())
+// 	{
+// 		if (nes->cpu.debug_int)
+// 		{
+// 			nes->cpu.debug_int = false;
+// 			break;
+// 		}
+// 		if (nes->cpu.instr_step == 0)
+// 		{
+// 			old_pc = cur_pc;
+// 			cur_pc = nes->cpu.pc;
+// 			if (bstset_word_contains(breakpoints, nes->cpu.pc))
+// 				break ;
+// 		}
+// 		// cpu_tick(&nes->cpu);
+// 		nes_step_alt(nes);
+// 	}
+// 	g_var = 0;
+// 	print_debug_view(&nes->cpu, old_pc);
+// }
 
-void	debug_loop(t_nes *nes)
-{
-	uint16_t addrbuf;
-	BSTSet_word breakpoints = {};
-	signal(SIGINT, sig_handler);
-	while (!WindowShouldClose())
-	{
-		uint16_t orig_pc = nes->cpu.pc;
-		char c = 0;
-		while (c != '\n' && c != 'n')
-		{
-			printf("\e[2J\e[H\e[32;1m<<< FETCH <<<\e[m\n");
-			printf("-------------\n");
-			print_debug_view(&nes->cpu, orig_pc);
-			c = tolower(getchar());
-			switch (c) {
-				case ('y'):
-					nes->cpu.y = read_byte_input("Y = ");
-					break;
-				case ('x'):
-					nes->cpu.x = read_byte_input("X = ");
-					break;
-				case ('a'):
-					nes->cpu.a = read_byte_input("A = ");
-					break;
-				// case ('p'):
-				// 	nes.cpu.pc = read_byte_input("PC = ");
-				// 	break;
-				case ('s'):
-					nes->cpu.sp = read_byte_input("SP = ");
-					break;
-				case ('b'):
-					bstset_word_insert(&breakpoints, read_word_input("\e[31;1mBREAK\e[m: "));
-					// _bstset_word_print(breakpoints.tree, 7);
-					// printf("contains 0x3373: %d\n", bstset_word_contains(&breakpoints, 0x3373));
-					// getchar();
-					break;
-				case ('p'):
-					addrbuf = read_word_input("\e[32;1mPRINT\e[m: ");
-					printf("\n\e[32:1m%04X\e[m: 0x%02X\n", addrbuf, read_byte(&nes->cpu, addrbuf));
-					printf("Press any key to continue...\n");
-					getchar();
-					continue ;
-				case ('c'):
-					// run_until_breakpoint(nes, &breakpoints);
-					tick_until_breakpoint(nes, &breakpoints);
-					orig_pc = nes->cpu.pc;
-					continue ;
-				case ('q'):
-					bstset_word_clear(&breakpoints, NULL);
-					return;
-				default:
-					break;
-			}
-		}
-
-		// cpu_tick(&nes->cpu);
-		nes_step_alt(nes);
-		while (nes->cpu.instr_step != 0)
-		{
-			// nes_step(nes);
-			printf("\e[2J\e[H\e[31;1m>>> EXECUTE >>>\e[m\n");
-			printf("-------------\n");
-			print_debug_view(&nes->cpu, orig_pc);
-			getchar();
-			// cpu_tick(&nes->cpu);
-			nes_step_alt(nes);
-		}
-		// nes.cpu.pc += instr->n_bytes;
-		// if (nes.cpu.pc == orig_pc)
-		// 	break;
-	}
-	printf("PC: %04X\n", nes->cpu.pc);
-
-}
+// void	debug_loop(t_nes *nes)
+// {
+// 	uint16_t addrbuf;
+// 	BSTSet_word breakpoints = {};
+// 	signal(SIGINT, sig_handler);
+// 	while (!WindowShouldClose())
+// 	{
+// 		uint16_t orig_pc = nes->cpu.pc;
+// 		char c = 0;
+// 		while (c != '\n' && c != 'n')
+// 		{
+// 			printf("\e[2J\e[H\e[32;1m<<< FETCH <<<\e[m\n");
+// 			printf("-------------\n");
+// 			print_debug_view(&nes->cpu, orig_pc);
+// 			c = tolower(getchar());
+// 			switch (c) {
+// 				case ('y'):
+// 					nes->cpu.y = read_byte_input("Y = ");
+// 					break;
+// 				case ('x'):
+// 					nes->cpu.x = read_byte_input("X = ");
+// 					break;
+// 				case ('a'):
+// 					nes->cpu.a = read_byte_input("A = ");
+// 					break;
+// 				// case ('p'):
+// 				// 	nes.cpu.pc = read_byte_input("PC = ");
+// 				// 	break;
+// 				case ('s'):
+// 					nes->cpu.sp = read_byte_input("SP = ");
+// 					break;
+// 				case ('b'):
+// 					bstset_word_insert(&breakpoints, read_word_input("\e[31;1mBREAK\e[m: "));
+// 					// _bstset_word_print(breakpoints.tree, 7);
+// 					// printf("contains 0x3373: %d\n", bstset_word_contains(&breakpoints, 0x3373));
+// 					// getchar();
+// 					break;
+// 				case ('p'):
+// 					addrbuf = read_word_input("\e[32;1mPRINT\e[m: ");
+// 					printf("\n\e[32:1m%04X\e[m: 0x%02X\n", addrbuf, read_byte(&nes->cpu, addrbuf));
+// 					printf("Press any key to continue...\n");
+// 					getchar();
+// 					continue ;
+// 				case ('c'):
+// 					// run_until_breakpoint(nes, &breakpoints);
+// 					tick_until_breakpoint(nes, &breakpoints);
+// 					orig_pc = nes->cpu.pc;
+// 					continue ;
+// 				case ('q'):
+// 					bstset_word_clear(&breakpoints, NULL);
+// 					return;
+// 				default:
+// 					break;
+// 			}
+// 		}
+//
+// 		// cpu_tick(&nes->cpu);
+// 		nes_step_alt(nes);
+// 		while (nes->cpu.instr_step != 0)
+// 		{
+// 			// nes_step(nes);
+// 			printf("\e[2J\e[H\e[31;1m>>> EXECUTE >>>\e[m\n");
+// 			printf("-------------\n");
+// 			print_debug_view(&nes->cpu, orig_pc);
+// 			getchar();
+// 			// cpu_tick(&nes->cpu);
+// 			nes_step_alt(nes);
+// 		}
+// 		// nes.cpu.pc += instr->n_bytes;
+// 		// if (nes.cpu.pc == orig_pc)
+// 		// 	break;
+// 	}
+// 	printf("PC: %04X\n", nes->cpu.pc);
+//
+// }
 
 // void	debug_loop_simple(t_nes *nes)
 // {
@@ -275,27 +272,22 @@ int	main(int argc, char **argv)
 	nes_load_cartridge(&emu.nes, cart);
 
 	set_term_settings();
-	// bstset_word_insert(&breakpoints, 0x3373);
 	
 	emu.nes.cpu.pending_interrupt = INT_RESET;
-	// nes.cpu.status = FLAG_E | FLAG_I; // TODO: Change back when interrupts are handled
-	// nes.cpu.sp = 0xFD;
-	// nes.cpu.cycles = 7;
-	// nes.cpu.pc = 0xC000;
-	// exec_hardware_interrupt(&nes.cpu, 0xFFFC);
-	while (!WindowShouldClose() && emu.state != EXIT)
+	while (!WindowShouldClose() && emu.state != STATE_EXIT)
 	{
 		switch (emu.state) {
-			case(GAMEPLAY):
+			case(STATE_GAMEPLAY):
 				run_emulator_frame(&emu);
 				break;
-			case (MENU):
-				handle_menu_input(&emu);
-				draw_menu(&emu);
+			case (STATE_MENU):
+				// handle_menu_input(&emu);
 				break;
 			default:
 				break;
 		}
+		draw_ui_elements(&emu);
+		draw_frame_scaled(&emu);
 	}
 	// debug_loop(&nes);
 
@@ -303,7 +295,8 @@ int	main(int argc, char **argv)
 	reset_term_settings();
 	close(emu.nes.cpu.logfd);
 	clear_msg_queue(&emu.msg_queue);
-	UnloadTexture(emu.screen_tex);
+	UnloadTexture(emu.nes_tex);
+	UnloadRenderTexture(emu.ui_tex);
 	StopAudioStream(emu.stream);
 	UnloadAudioStream(emu.stream);
 	CloseAudioDevice();

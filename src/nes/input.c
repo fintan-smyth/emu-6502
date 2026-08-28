@@ -62,9 +62,9 @@ void	handle_player_input(t_emulator *emu)
 	}
 
 	if (IsKeyPressed(KEY_X))
-		save_game(emu);
+		save_game(emu, QUICKSAVE_SLOT_NUM);
 	if (IsKeyPressed(KEY_Z))
-		load_save_game(emu);
+		load_save_game(emu, QUICKSAVE_SLOT_NUM);
 	if (IsKeyPressed(KEY_B))
 	{
 		printf("mirroring: %d\n", nes->ppu.mirroring);
@@ -73,9 +73,10 @@ void	handle_player_input(t_emulator *emu)
 	}
 	if (IsKeyPressed(KEY_ESCAPE))
 	{
-		emu->state = MENU;
-		emu->menustate.menutype = PAUSE;
+		emu->state = STATE_MENU;
+		emu->menustate.menutype = MENU_PAUSE;
 		emu->menustate.selected_idx = 0;
+		set_input_hook(emu, handle_menu_input);
 	}
 	nes->apu.fps_scale = g_settings.target_fps / 60.0;
 }

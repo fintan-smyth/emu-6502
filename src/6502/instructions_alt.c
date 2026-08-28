@@ -13,11 +13,6 @@ static const uint16_t vectors[] = {
 	[INT_RESET]	= 0xFFFC,
 };
 
-void dummy(void)
-{
-	printf("dummy func!\n");
-}
-
 void	cpu_tick(t_cpu *cpu)
 {
 	cpu->cycles++;

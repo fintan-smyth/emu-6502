@@ -1,3 +1,4 @@
+#include "emulator.h"
 #include "emu6502.h"
 #include "nes.h"
 #include <fcntl.h>
@@ -95,6 +96,7 @@ t_cart *read_nes_cart(const char *path)
 
 	t_cart *cart = calloc(1, sizeof(*cart));
 	extract_title(cart, path);
+	ensure_save_dir_exists(cart->title);
 
 	if ((buf[7] & 0x0C) == 0x08)
 		parse_nes_2_header(cart, fd, (struct nes_2_header *)buf);

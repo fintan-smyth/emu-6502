@@ -1,6 +1,8 @@
 #ifndef INSTR_MACROS_H
 # define INSTR_MACROS_H
 
+#include <stdlib.h>
+
 #define END_INSTRUCTION                                                      \
 	if (cpu->nmi_pending)                                                    \
 	{                                                                        \

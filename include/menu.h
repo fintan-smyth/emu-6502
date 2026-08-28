@@ -5,8 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MSG_QUEUE_FONTSIZE 30
-
 typedef struct s_msg
 {
 	char			buf[256];
@@ -24,9 +22,13 @@ typedef enum
 
 typedef enum
 {
-	PAUSE,
-	SETTINGS,
+	MENU_PAUSE,
+	MENU_SETTINGS,
+	MENU_SAVE,
+	MENU_LOAD,
 }	MenuType;
+
+typedef struct s_emulator t_emulator;
 
 typedef struct
 {
@@ -34,7 +36,8 @@ typedef struct
 	MenuItemType	type;
 	union {
 		struct {
-			void (*exec)(void *);
+			void (*exec)(t_emulator *);
+			void (*format)(t_emulator *, int32_t entry_num, char *buf);
 		} button;
 		struct {
 			size_t	data_offset;
@@ -52,7 +55,7 @@ typedef struct
 
 t_msg	*new_msg(const char *str, double display_time);
 void	enqueue_msg(t_msg **queue, t_msg *msg);
-void	display_msg_queue(t_msg **queue, double scaling);
+void	display_msg_queue(t_msg **queue);
 void	clear_msg_queue(t_msg **queue);
 
 typedef struct s_emulator t_emulator;

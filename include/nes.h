@@ -4,6 +4,7 @@
 #include "emu6502.h"
 #include <raylib.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 #define MIRROR_HORIZONTAL 0

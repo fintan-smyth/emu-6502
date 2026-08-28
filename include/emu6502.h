@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "fslib.h"
 
 #define NES_MODE
 
